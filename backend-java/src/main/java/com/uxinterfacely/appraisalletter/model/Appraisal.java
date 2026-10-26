@@ -1,6 +1,8 @@
 package com.uxinterfacely.appraisalletter.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -56,8 +58,16 @@ public class Appraisal {
      * the rendered — and possibly edited — letter. Null for any record
      * saved before this existed, in which case the backend falls back to
      * PdfGenerationService's server-side rebuild.
+     *
+     * Deliberately NOT @Lob: on PostgreSQL, Hibernate's @Lob on byte[]
+     * expects the old-style Large Object storage (an "oid" column, with
+     * data in a separate pg_largeobject table) — not the same thing as a
+     * plain "bytea" column, which is what the Flyway migration actually
+     * created and what we want (simpler, no separate large-object
+     * cleanup to worry about). @JdbcTypeCode(VARBINARY) maps directly to
+     * bytea instead.
      */
-    @Lob
+    @JdbcTypeCode(SqlTypes.VARBINARY)
     @Column(name = "pdf_data")
     private byte[] pdfData;
 
@@ -95,3 +105,6 @@ public class Appraisal {
     public byte[] getPdfData() { return pdfData; }
     public void setPdfData(byte[] pdfData) { this.pdfData = pdfData; }
 }
+
+    
+
