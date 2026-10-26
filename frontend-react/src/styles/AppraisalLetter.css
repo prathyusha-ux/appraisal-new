@@ -1,0 +1,278 @@
+/* ========================================================================
+   Appraisal Letter — visual style matched to Experience Letter's spec
+   (same px/color values as Experience.css), while keeping this letter's
+   own appraisal-specific wording and content untouched.
+
+   NOTE: the previous version of this file had two separate, conflicting
+   style blocks for .letter-page (an earlier Calibri/15px block, and a
+   later "Reference-letter visual match" Arial/11px block that silently
+   won due to CSS cascade order). This rewrite removes that duplication
+   entirely — there is now exactly one definition per rule.
+   ======================================================================== */
+
+#appraisal-letter {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+#appraisal-letter.editing .letter-page {
+  outline: 2px dashed #0b63e5;
+  outline-offset: 6px;
+}
+#appraisal-letter.editing .letter-page:focus {
+  outline: 2px solid #0b63e5;
+}
+
+/* ---------- Page box ---------- */
+#appraisal-letter .letter-page {
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(794px, 100%);
+  min-height: 1123px; /* A4 height at 96dpi, matches Experience Letter's .page */
+  margin: 28px auto;
+  padding: 44px 44px 22px; /* Experience Letter spec: 44px top/sides, 22px bottom */
+  background: #fff;
+  color: #1a1a1a;
+  font-family: Calibri, Carlito, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  border: 1px solid #e0e3e8;
+  box-shadow: 0 10px 32px rgba(16, 24, 40, .12);
+}
+#appraisal-letter .letter-page:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- Logo / brand row ---------- */
+#appraisal-letter .letter-brand-row {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+  margin: 0 0 16px; /* Experience Letter spec: space below logo */
+}
+
+#appraisal-letter .letter-brand-row img.company-logo {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 200px;
+  max-height: 90px; /* bumped up from the spec's 52px, matching Experience Letter's own enlarged logo */
+  object-fit: contain;
+  object-position: left top;
+  margin: 0;
+}
+
+/* ---------- Title ---------- */
+#appraisal-letter .letter-title {
+  text-align: center;
+  color: #1a1a1a;
+  font-size: 16px;
+  font-weight: 700;
+  font-style: normal;
+  text-decoration: underline;
+  text-transform: none; /* this letter's title is a full sentence, not a short uppercase label */
+  margin: 0 0 20px;
+  line-height: 1.4;
+}
+
+/* ---------- Body text ---------- */
+#appraisal-letter p {
+  margin: 0 0 13px;
+  text-align: justify;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+#appraisal-letter h4 {
+  margin: 20px 0 13px;
+  color: #1a1a1a;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+#appraisal-letter .appraisal-details-list {
+  padding-left: 24px;
+  margin: 0 0 13px;
+  line-height: 1.5;
+}
+#appraisal-letter .appraisal-details-list li {
+  padding-left: 2px;
+  margin: 5px 0;
+}
+
+/* ---------- Salary table ---------- */
+#appraisal-letter .salary-structure {
+  margin: 13px 0;
+  width: 100%;
+  break-inside: avoid;
+}
+#appraisal-letter .salary-structure table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+  color: #1a1a1a;
+}
+#appraisal-letter .salary-structure th,
+#appraisal-letter .salary-structure td {
+  padding: 8px 7px;
+  border: 1px solid #202020;
+  text-align: right;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+#appraisal-letter .salary-structure th:first-child,
+#appraisal-letter .salary-structure td:first-child {
+  text-align: left;
+  width: 43%;
+}
+#appraisal-letter .salary-structure thead th {
+  background: #e6e6e6;
+  font-weight: 700;
+  text-align: center;
+}
+#appraisal-letter .salary-structure .total-row th,
+#appraisal-letter .salary-structure .total-row td,
+#appraisal-letter .salary-structure .take-home-row th {
+  font-weight: 700;
+}
+#appraisal-letter .salary-structure .section-row th {
+  text-align: left;
+  background: #fff;
+}
+#appraisal-letter .salary-note {
+  font-size: 11px;
+  color: #555;
+  text-align: left;
+}
+
+/* ---------- Signature / stamp ---------- */
+#appraisal-letter .letter-signature-area {
+  margin-top: 13px;
+}
+#appraisal-letter .letter-signoff {
+  margin: 0 0 8px;
+}
+#appraisal-letter .signature-stamp-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 220px;
+  max-height: 90px; /* Experience Letter spec */
+  object-fit: contain;
+  object-position: left center;
+  margin-top: 6px;
+}
+
+/* ---------- Footer ---------- */
+#appraisal-letter .letter-page .company-gst {
+  margin: auto 0 0; /* pins to the bottom of the page, same as Experience Letter's footer */
+  padding-top: 10px;
+  text-align: center;
+  color: #2457D6;
+  font-size: 13px;
+  font-weight: 700;
+  font-style: normal;
+  border-top: 1px solid #b8bcc4;
+}
+
+.download-button {
+  margin: 20px 0;
+  background: #2457a7;
+  color: #fff;
+}
+
+.edit-button {
+  background: #2e7d32;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.edit-button:hover {
+  background: #1b5e20;
+}
+.edit-button.active {
+  background: #c62828;
+}
+.edit-button.active:hover {
+  background: #a02020;
+}
+
+.edit-hint {
+  font-size: 12px;
+  color: #0b63e5;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.save-status {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 4px 0 0;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 600px) {
+  #appraisal-letter .letter-page {
+    width: 100%;
+    min-height: 0;
+    margin: 12px auto;
+    padding: 24px 18px;
+    font-size: 13px;
+    border-left: 0;
+    border-right: 0;
+  }
+  #appraisal-letter .salary-structure table { font-size: 10px; }
+  #appraisal-letter .salary-structure th,
+  #appraisal-letter .salary-structure td { padding: 5px 3px; }
+  #appraisal-letter .letter-title { font-size: 15px; }
+  #appraisal-letter .letter-brand-row img.company-logo {
+    max-width: 150px;
+    max-height: 70px;
+  }
+}
+
+/* ---------- Print (used when html2canvas isn't the path, e.g. browser Ctrl+P) ---------- */
+@media print {
+  @page { size: A4; margin: 0; }
+  html, body, #root { width: 100%; min-height: 0; margin: 0; padding: 0; background: #fff !important; }
+  body * { visibility: hidden; }
+  #appraisal-letter, #appraisal-letter * { visibility: visible; }
+  #appraisal-letter {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+  #appraisal-letter .letter-page {
+    width: 100%;
+    min-height: 0;
+    height: 10.69in;
+    margin: 0;
+    border: 0;
+    box-shadow: none;
+    break-after: page;
+    page-break-after: always;
+  }
+  #appraisal-letter .letter-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .download-button, .result-toolbar, .app-header, .form-card, .saved-appraisals, .edit-hint {
+    display: none !important;
+  }
+}
