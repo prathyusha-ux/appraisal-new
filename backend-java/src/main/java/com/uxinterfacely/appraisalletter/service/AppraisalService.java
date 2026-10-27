@@ -53,41 +53,16 @@ public class AppraisalService {
         return repository.findByEmployeeNameContainingIgnoreCaseOrderByCreatedAtDesc(name);
     }
 
-    /**
-     * Returns the stored client-generated PDF if one was ever uploaded
-     * (via savePdf below) — this is the real, possibly-edited letter.
-     * Falls back to rebuilding server-side only for older records saved
-     * before pdf_data existed, since those never got a client-side copy.
-     */
     public byte[] generatePdf(Long id) {
-        Appraisal a = getById(id);
-        if (a.getPdfData() != null && a.getPdfData().length > 0) {
-            return a.getPdfData();
-        }
-        return pdfGenerationService.generatePdf(a);
+        return pdfGenerationService.generatePdf(getById(id));
     }
 
-    /**
-     * Stores the PDF the browser just built (html2canvas + jsPDF) from the
-     * rendered letter — called right after Generate, same moment
-     * Experience Letter's auto-save fires.
-     */
-    public Appraisal savePdf(Long id, byte[] pdfBytes) {
+    /** Emails the saved appraisal PDF (built on the server) and records whether it was sent. */
+    public Appraisal sendEmail(Long id) {
         Appraisal appraisal = getById(id);
-        appraisal.setPdfData(pdfBytes);
-        return repository.save(appraisal);
-    }
-
-    /**
-     * Emails the PDF the browser just built (reflecting any inline edits
-     * made to the letter), and stores it as the record's PDF too, so a
-     * later Download gets the same, just-sent version.
-     */
-    public Appraisal sendEmail(Long id, byte[] pdfBytes) {
-        Appraisal appraisal = getById(id);
-        appraisal.setPdfData(pdfBytes);
+        byte[] pdf = pdfGenerationService.generatePdf(appraisal);
         try {
-            emailService.sendAppraisalLetter(appraisal, pdfBytes);
+            emailService.sendAppraisalLetter(appraisal, pdf);
             appraisal.setStatus("sent");
         } catch (RuntimeException e) {
             appraisal.setStatus("failed");
@@ -96,7 +71,8 @@ public class AppraisalService {
         }
         return repository.save(appraisal);
     }
-        /** Emails a PDF built in the browser; marks the saved record as sent if an id is given. */
+
+    /** Emails a PDF built in the browser; marks the saved record as sent if an id is given. */
     public void sendUploadedPdf(Long appraisalId, String to, String employeeName, byte[] pdf) {
         emailService.sendPdf(to, employeeName, pdf);
         if (appraisalId != null) {
