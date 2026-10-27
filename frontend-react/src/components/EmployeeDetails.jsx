@@ -1,4 +1,3 @@
-
 export default function EmployeeDetails({ form, updateField }) {
   const fields = [
     ["employeeName", "Employee Name", "text"],
@@ -15,26 +14,23 @@ export default function EmployeeDetails({ form, updateField }) {
   ];
 
   return (
-    <section className="employee-details">
-      <h3>Employee Details</h3>
-
-      <div className="form-grid">
-        {fields.map(([name, label, type]) => (
-          <label key={name}>
-            <span>{label}</span>
-            <input
-              type={type}
-              name={name}
-              value={form[name]}
-              min={type === "number" ? (name === "currentCtc" ? 1 : 0) : undefined}
-              step={type === "number" ? "0.01" : undefined}
-              onChange={(event) => updateField(name, event.target.value)}
-              readOnly={["employeePf", "employerPf", "professionalTax"].includes(name)}
-              required
-            />
-          </label>
-        ))}
-      </div>
-    </section>
+    <div className="form-grid">
+      {fields.map(([name, label, type]) => (
+        <div className="field-group" key={name}>
+          <label htmlFor={name}>{label}</label>
+          <input
+            id={name}
+            type={type}
+            name={name}
+            value={form[name]}
+            min={type === "number" ? (name === "currentCtc" ? 1 : 0) : undefined}
+            step={type === "number" ? "0.01" : undefined}
+            onChange={(event) => updateField(name, event.target.value)}
+            readOnly={["employeePf", "employerPf", "professionalTax"].includes(name)}
+            required
+          />
+        </div>
+      ))}
+    </div>
   );
 }

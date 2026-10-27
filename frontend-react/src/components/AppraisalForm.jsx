@@ -1,13 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import appraisalService, { getAppraisals } from "../services/appraisalService";
 import EmployeeDetails from "./EmployeeDetails";
 import AppraisalLetterPreview from "./AppraisalLetterPreview";
 import PdfDownloadButton from "./PdfDownloadButton";
-import { buildAppraisalPdfBlob } from "../utils/buildPdf";
-
-function getLetterPageEls() {
-  return Array.from(document.querySelectorAll("#appraisal-letter .letter-page"));
-}
 
 export default function AppraisalForm() {
   const [form, setForm] = useState({
@@ -33,8 +28,9 @@ export default function AppraisalForm() {
   const [appraisals, setAppraisals] = useState([]);
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [listError, setListError] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
-  const [saveStatus, setSaveStatus] = useState("");
+
+  const formTop = useRef(null);
+  const letterRef = useRef(null);
 
   const loadAppraisals = useCallback(async () => {
     setIsLoadingList(true);
@@ -92,7 +88,16 @@ export default function AppraisalForm() {
       return;
     }
 
+    // Show the letter straight away; saving to the database happens after.
     setError("");
+    setEmailMessage("");
+    setEmailError("");
+    setSavedAppraisalId(null);
+    setIsGenerated(true);
+    setTimeout(() => {
+      letterRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+
     setIsSaving(true);
     try {
       const payload = {
@@ -106,16 +111,13 @@ export default function AppraisalForm() {
       };
       const saved = await appraisalService.createAppraisal(payload);
       setSavedAppraisalId(saved.id);
-      setEmailMessage("");
-      setEmailError("");
-      setIsEditing(false);
-      setIsGenerated(true);
       await loadAppraisals();
     } catch (requestError) {
       setError(
-        requestError.response?.data?.message ||
-        requestError.response?.data?.error ||
-        "Could not save appraisal. Check that the backend and database are running."
+        "Letter generated, but it could not be saved, so PDF download and email are unavailable. " +
+        (requestError.response?.data?.message ||
+          requestError.response?.data?.error ||
+          "Check that the backend is running and the API key and allowed origin are correct.")
       );
     } finally {
       setIsSaving(false);
@@ -131,24 +133,12 @@ export default function AppraisalForm() {
     setEmailMessage("");
     setEmailError("");
     try {
-      // Rebuilds the PDF fresh from whatever's currently on screen, so any
-      // inline edit made via "Edit Letter" is included — unlike the old
-      // version, which just told the backend to regenerate from the
-      // original, unedited form data.
-      const pageEls = getLetterPageEls();
-      const blob = await buildAppraisalPdfBlob(pageEls);
-      const safeName = (form.employeeName || "Employee").trim().replace(/\s+/g, "_");
-      const result = await appraisalService.sendAppraisalEmail(
-        savedAppraisalId,
-        blob,
-        `${safeName}_Appraisal_Letter.pdf`
-      );
+      const result = await appraisalService.sendAppraisalEmail(savedAppraisalId);
       setEmailMessage(result.message || `Appraisal PDF sent to ${form.employeeEmail}.`);
     } catch (requestError) {
       setEmailError(
         requestError.response?.data?.message ||
         requestError.response?.data?.error ||
-        requestError.message ||
         "Email could not be sent. Check the recipient address and backend SMTP settings."
       );
     } finally {
@@ -156,129 +146,71 @@ export default function AppraisalForm() {
     }
   };
 
-  // Auto-saves the PDF right after Generate (before any editing) — same
-  // moment Experience Letter's auto-save fires. Runs once the letter has
-  // actually rendered, since the .letter-page elements don't exist in the
-  // DOM until after this render commits.
-  useEffect(() => {
-    if (!isGenerated || !savedAppraisalId) return;
-    const pageEls = getLetterPageEls();
-    if (pageEls.length === 0) return;
-
-    let cancelled = false;
-    (async () => {
-      setSaveStatus("Generated ✓ — saving...");
-      try {
-        const blob = await buildAppraisalPdfBlob(pageEls);
-        if (cancelled) return;
-        const safeName = (form.employeeName || "Employee").trim().replace(/\s+/g, "_");
-        await appraisalService.uploadPdf(savedAppraisalId, blob, `${safeName}_Appraisal_Letter.pdf`);
-        if (!cancelled) setSaveStatus("Generated ✓ — saved");
-      } catch (err) {
-        console.error("Auto-save PDF failed:", err);
-        if (!cancelled) setSaveStatus("Generated ✓ (save failed — check console)");
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // Intentionally only re-runs when a NEW letter is generated, not on
-    // every form change — this is a one-shot auto-save right after Generate.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isGenerated, savedAppraisalId]);
-
   const incrementPercentage =
     Number(form.currentCtc) > 0
-      ? ((Number(form.revisedCtc) - Number(form.currentCtc)) /
-          Number(form.currentCtc)) *
-        100
+      ? ((Number(form.revisedCtc) - Number(form.currentCtc)) / Number(form.currentCtc)) * 100
       : 0;
+
+  const editDetails = () => {
+    formTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    formTop.current?.querySelector("input")?.focus({ preventScroll: true });
+  };
 
   return (
     <main className="appraisal-container">
-      {!isGenerated && (
-        <section className="form-card">
-          <h2>Employee Salary Revision</h2>
-          <p className="form-intro">
-            Fill in all employee and salary revision details, then select
-            Generate Appraisal Letter to view the completed letter.
+      <form className="form-card" ref={formTop} onSubmit={handleSubmit}>
+        <EmployeeDetails form={form} updateField={updateField} />
+
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
           </p>
+        )}
 
-          <form onSubmit={handleSubmit}>
-            <EmployeeDetails form={form} updateField={updateField} />
+        <div className="button-row">
+          <button type="submit" className="btn-primary btn-wide" disabled={isSaving}>
+            {isSaving ? "Saving..." : "Generate Appraisal Letter"}
+          </button>
+        </div>
+      </form>
 
-            {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            )}
+      <div className="secondary-buttons">
+        <PdfDownloadButton appraisalId={savedAppraisalId} disabled={!isGenerated} />
+        <button type="button" className="btn-green" onClick={editDetails}>
+          ✎ Edit Details
+        </button>
+        <button
+          type="button"
+          onClick={handleSendEmail}
+          disabled={!isGenerated || !savedAppraisalId || isSendingEmail}
+        >
+          {isSendingEmail ? "Sending..." : "✉ Email Appraisal Letter"}
+        </button>
+      </div>
+      {emailMessage && <p className="email-success" role="status">{emailMessage}</p>}
+      {emailError && <p className="form-error center-error" role="alert">{emailError}</p>}
 
-            <button type="submit" className="generate-button" disabled={isSaving}>
-              {isSaving ? "Saving..." : "Generate Appraisal Letter"}
-            </button>
-          </form>
-        </section>
-      )}
-
-      {isGenerated && (
-        <section className="generated-result">
-          <div className="result-toolbar">
-            <div>
-              <h2>Appraisal Letter Generated</h2>
-              <p>
-                Increment Percentage:{" "}
-                <strong>{incrementPercentage.toFixed(2)}%</strong>
-              </p>
-              {saveStatus && <p className="save-status">{saveStatus}</p>}
-            </div>
-
-            <button
-              type="button"
-              className={`edit-button${isEditing ? " active" : ""}`}
-              onClick={() => setIsEditing((prev) => !prev)}
-            >
-              {isEditing ? "✓ Done Editing" : "✎ Edit Letter"}
-            </button>
-          </div>
-
-          {isEditing && (
-            <p className="edit-hint">
-              Editing on — click directly into the letter text to make changes, then click
-              "Done Editing" to lock them in.
-            </p>
-          )}
-
+      {isGenerated ? (
+        <div ref={letterRef}>
           <AppraisalLetterPreview
             form={form}
             incrementPercentage={incrementPercentage}
             salarySettings={form}
-            isEditing={isEditing}
           />
-
-          <div className="appraisal-actions">
-            <PdfDownloadButton employeeName={form.employeeName} />
-            <button
-              type="button"
-              className="download-button email-send-button"
-              onClick={handleSendEmail}
-              disabled={isSendingEmail}
-            >
-              {isSendingEmail ? "Sending Email..." : "Send Appraisal by Email"}
-            </button>
-          </div>
-          {emailMessage && <p className="email-success" role="status">{emailMessage}</p>}
-          {emailError && <p className="form-error" role="alert">{emailError}</p>}
-        </section>
+        </div>
+      ) : (
+        <p className="letter-empty">
+          No letter generated yet. Fill in the form and click "Generate Appraisal Letter".
+        </p>
       )}
 
-      {!isGenerated && <section className="saved-appraisals" aria-labelledby="saved-appraisals-heading">
+      <section className="saved-appraisals" aria-labelledby="saved-appraisals-heading">
         <div className="saved-appraisals-heading">
           <div>
             <h2 id="saved-appraisals-heading">Saved Appraisal Records</h2>
             <p>Records retrieved from the database.</p>
           </div>
-          <button type="button" className="refresh-button" onClick={loadAppraisals} disabled={isLoadingList}>
+          <button type="button" onClick={loadAppraisals} disabled={isLoadingList}>
             {isLoadingList ? "Loading..." : "Refresh"}
           </button>
         </div>
@@ -294,7 +226,8 @@ export default function AppraisalForm() {
               <thead>
                 <tr>
                   <th>ID</th><th>Employee</th><th>Designation</th><th>Department</th>
-                  <th>Current CTC (₹)</th><th>Revised CTC (₹)</th><th>Increment</th><th>Effective Date</th><th>PDF</th>
+                  <th>Current CTC (₹)</th><th>Revised CTC (₹)</th><th>Increment</th>
+                  <th>Effective Date</th><th>PDF</th>
                 </tr>
               </thead>
               <tbody>
@@ -302,13 +235,27 @@ export default function AppraisalForm() {
                   const current = Number(record.currentCtc || 0);
                   const revised = Number(record.revisedCtc || 0);
                   const increment = current > 0 ? ((revised - current) / current) * 100 : 0;
-                  const money = (value) => Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+                  const money = (value) =>
+                    Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
                   return (
                     <tr key={record.id}>
-                      <td>{record.id}</td><td>{record.employeeName}</td><td>{record.designation}</td>
-                      <td>{record.department}</td><td>{money(current)}</td><td>{money(revised)}</td>
-                      <td>{increment.toFixed(2)}%</td><td>{record.effectiveDate || "—"}</td>
-                      <td><button type="button" className="table-download-button" onClick={() => appraisalService.downloadPdf(record.id)}>Download</button></td>
+                      <td>{record.id}</td>
+                      <td>{record.employeeName}</td>
+                      <td>{record.designation}</td>
+                      <td>{record.department}</td>
+                      <td>{money(current)}</td>
+                      <td>{money(revised)}</td>
+                      <td>{increment.toFixed(2)}%</td>
+                      <td>{record.effectiveDate || "—"}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="table-download-button"
+                          onClick={() => appraisalService.downloadPdf(record.id)}
+                        >
+                          Download
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -316,7 +263,7 @@ export default function AppraisalForm() {
             </table>
           </div>
         )}
-      </section>}
+      </section>
     </main>
   );
 }

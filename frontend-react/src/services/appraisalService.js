@@ -21,6 +21,11 @@ const appraisalService = {
     const response = await api.post("/api/appraisals", data);
     return response.data;
   },
+    // Search saved appraisals by employee name
+  searchAppraisals: async (name) => {
+    const response = await api.get("/api/appraisals/search", { params: { name } });
+    return response.data.results || [];
+  },
 
   // Retrieve an appraisal by ID
   getAppraisal: async (id) => {

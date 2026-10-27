@@ -5,7 +5,7 @@ import "../styles/AppraisalLetter.css";
 
 export default function AppraisalPage() {
   return (
-    <div className="app">
+    <div className="page-shell">
       <Header />
       <AppraisalForm />
     </div>
