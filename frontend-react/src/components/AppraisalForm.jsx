@@ -71,31 +71,6 @@ export default function AppraisalForm() {
     setError("");
   };
 
-  const pdfFileName = `${(form.employeeName || "Employee").trim().replace(/\s+/g, "_")}_Appraisal_Letter.pdf`;
-
-  const makeLetterPdf = () => {
-    const root = document.getElementById("appraisal-letter");
-    if (!root) throw new Error("Generate the letter first.");
-    return buildLetterPdf(root);
-  };
-
-  // Builds the PDF from the letter on screen and stores it in the database.
-  const storePdf = async (id) => {
-    setPdfStatus("Saving PDF to the database...");
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 300)); // let the letter finish rendering
-      const pdf = await makeLetterPdf();
-      await appraisalService.uploadPdf(id, pdf.output("blob"), pdfFileName);
-      setPdfStatus("PDF saved to the database.");
-    } catch (pdfError) {
-      setPdfStatus("");
-      setError(
-        "Letter saved, but its PDF could not be stored. " +
-        (pdfError.response?.data?.message || pdfError.message || "")
-      );
-    }
-  };
-
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -115,12 +90,12 @@ export default function AppraisalForm() {
       return;
     }
 
-    // Show the letter straight away (right under the form); saving happens after.
+    // Show the letter straight away; saving to the database happens after.
     setError("");
     setEmailMessage("");
     setEmailError("");
-    setPdfStatus("");
     setSavedAppraisalId(null);
+    setPdfStatus("");
     setIsEditing(false);
     setLetterVersion((v) => v + 1);
     setIsGenerated(true);
@@ -149,6 +124,31 @@ export default function AppraisalForm() {
       );
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const pdfFileName = `${(form.employeeName || "Employee").trim().replace(/\s+/g, "_")}_Appraisal_Letter.pdf`;
+
+  const makeLetterPdf = () => {
+    const root = document.getElementById("appraisal-letter");
+    if (!root) throw new Error("Generate the letter first.");
+    return buildLetterPdf(root);
+  };
+
+  // Builds the PDF from the letter on screen and stores it in the database.
+  const storePdf = async (id) => {
+    setPdfStatus("Saving PDF to the database...");
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 300)); // let the letter finish rendering
+      const pdf = await makeLetterPdf();
+      await appraisalService.uploadPdf(id, pdf.output("blob"), pdfFileName);
+      setPdfStatus("PDF saved to the database.");
+    } catch (pdfError) {
+      setPdfStatus("");
+      setError(
+        "Letter saved, but its PDF could not be stored. " +
+        (pdfError.response?.data?.message || pdfError.message || "")
+      );
     }
   };
 
@@ -205,7 +205,9 @@ export default function AppraisalForm() {
 
   const incrementPercentage =
     Number(form.currentCtc) > 0
-      ? ((Number(form.revisedCtc) - Number(form.currentCtc)) / Number(form.currentCtc)) * 100
+      ? ((Number(form.revisedCtc) - Number(form.currentCtc)) /
+          Number(form.currentCtc)) *
+        100
       : 0;
 
   return (
@@ -271,4 +273,45 @@ export default function AppraisalForm() {
             <h2 id="saved-appraisals-heading">Saved Appraisal Records</h2>
             <p>Records retrieved from the database.</p>
           </div>
-          <button type="button"
+          <button type="button" className="refresh-button" onClick={loadAppraisals} disabled={isLoadingList}>
+            {isLoadingList ? "Loading..." : "Refresh"}
+          </button>
+        </div>
+
+        {listError && <p className="form-error" role="alert">{listError}</p>}
+        {isLoadingList ? (
+          <p className="list-message">Loading appraisal records...</p>
+        ) : appraisals.length === 0 ? (
+          <p className="list-message">No appraisal records found. Generate and save an appraisal to see it here.</p>
+        ) : (
+          <div className="table-scroll">
+            <table className="saved-appraisals-table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>Employee</th><th>Designation</th><th>Department</th>
+                  <th>Current CTC (₹)</th><th>Revised CTC (₹)</th><th>Increment</th><th>Effective Date</th><th>PDF</th>
+                </tr>
+              </thead>
+              <tbody>
+                {appraisals.map((record) => {
+                  const current = Number(record.currentCtc || 0);
+                  const revised = Number(record.revisedCtc || 0);
+                  const increment = current > 0 ? ((revised - current) / current) * 100 : 0;
+                  const money = (value) => Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+                  return (
+                    <tr key={record.id}>
+                      <td>{record.id}</td><td>{record.employeeName}</td><td>{record.designation}</td>
+                      <td>{record.department}</td><td>{money(current)}</td><td>{money(revised)}</td>
+                      <td>{increment.toFixed(2)}%</td><td>{record.effectiveDate || "—"}</td>
+                      <td><button type="button" className="table-download-button" onClick={() => appraisalService.downloadPdf(record.id)}>Download</button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
