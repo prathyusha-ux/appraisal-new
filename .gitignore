@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.vite/
+.env
+.env.*
+!.env.example
+*.log
+
+target/
+*.class
+*.jar
+
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
