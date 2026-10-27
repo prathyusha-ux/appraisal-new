@@ -7,7 +7,7 @@ export default function AppraisalLetterPreview({
   form,
   incrementPercentage,
   salarySettings = {},
-  isEditing = false,
+  editable = false,
 }) {
   const money = (value) =>
     Number(value || 0).toLocaleString("en-IN", {
@@ -18,15 +18,15 @@ export default function AppraisalLetterPreview({
     ? new Date(`${form.effectiveDate}T00:00:00`).toLocaleDateString("en-GB")
     : "DD/MM/YYYY";
 
-  const Footer = () => (
-    <p className="company-gst">GST-36AAIFU2638L1ZQ</p>
-  );
+    const footer = <p className="company-gst">GST-36AAIFU2638L1ZQ</p>;
 
   return (
-    <section
-      className={`letter-preview${isEditing ? " editing" : ""}`}
+       <section
+      className={`letter-preview${editable ? " editing" : ""}`}
       id="appraisal-letter"
       aria-label="Appraisal letter preview"
+      contentEditable={editable}
+      suppressContentEditableWarning
     >
       {/* PAGE 1 */}
       <article

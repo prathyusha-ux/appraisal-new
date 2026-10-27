@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import appraisalService, { getAppraisals } from "../services/appraisalService";
 import EmployeeDetails from "./EmployeeDetails";
 import AppraisalLetterPreview from "./AppraisalLetterPreview";
-import PdfDownloadButton from "./PdfDownloadButton";
+import { buildLetterPdf } from "../utils/letterPdf";
 
 export default function AppraisalForm() {
   const [form, setForm] = useState({
@@ -19,6 +19,9 @@ export default function AppraisalForm() {
     professionalTax: "200",
   });
   const [isGenerated, setIsGenerated] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isPreparingPdf, setIsPreparingPdf] = useState(false);
+  const [letterVersion, setLetterVersion] = useState(0);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -28,8 +31,6 @@ export default function AppraisalForm() {
   const [appraisals, setAppraisals] = useState([]);
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [listError, setListError] = useState("");
-
-  const formTop = useRef(null);
   const letterRef = useRef(null);
 
   const loadAppraisals = useCallback(async () => {
@@ -66,6 +67,7 @@ export default function AppraisalForm() {
       return next;
     });
     setIsGenerated(false);
+    setIsEditing(false);
     setError("");
   };
 
@@ -93,6 +95,8 @@ export default function AppraisalForm() {
     setEmailMessage("");
     setEmailError("");
     setSavedAppraisalId(null);
+    setIsEditing(false);
+    setLetterVersion((v) => v + 1);
     setIsGenerated(true);
     setTimeout(() => {
       letterRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -114,7 +118,7 @@ export default function AppraisalForm() {
       await loadAppraisals();
     } catch (requestError) {
       setError(
-        "Letter generated, but it could not be saved, so PDF download and email are unavailable. " +
+        "Letter generated, but it could not be saved to the database. " +
         (requestError.response?.data?.message ||
           requestError.response?.data?.error ||
           "Check that the backend is running and the API key and allowed origin are correct.")
@@ -124,22 +128,47 @@ export default function AppraisalForm() {
     }
   };
 
-  const handleSendEmail = async () => {
-    if (!savedAppraisalId) {
-      setEmailError("Save the appraisal before sending the email.");
-      return;
+  const pdfFileName = `${(form.employeeName || "Employee").trim().replace(/\s+/g, "_")}_Appraisal_Letter.pdf`;
+
+  const makeLetterPdf = () => {
+    const root = document.getElementById("appraisal-letter");
+    if (!root) throw new Error("Generate the letter first.");
+    return buildLetterPdf(root);
+  };
+
+  const handleDownload = async () => {
+    setIsPreparingPdf(true);
+    setEmailMessage("");
+    setEmailError("");
+    try {
+      const pdf = await makeLetterPdf();
+      pdf.save(pdfFileName);
+    } catch (pdfError) {
+      setEmailError(pdfError.message || "Could not create the PDF.");
+    } finally {
+      setIsPreparingPdf(false);
     }
+  };
+
+  const handleSendEmail = async () => {
     setIsSendingEmail(true);
     setEmailMessage("");
     setEmailError("");
     try {
-      const result = await appraisalService.sendAppraisalEmail(savedAppraisalId);
+      const pdf = await makeLetterPdf();
+      const result = await appraisalService.sendLetterEmail({
+        to: form.employeeEmail,
+        employeeName: form.employeeName,
+        appraisalId: savedAppraisalId,
+        blob: pdf.output("blob"),
+        fileName: pdfFileName,
+      });
       setEmailMessage(result.message || `Appraisal PDF sent to ${form.employeeEmail}.`);
     } catch (requestError) {
       setEmailError(
         requestError.response?.data?.message ||
         requestError.response?.data?.error ||
-        "Email could not be sent. Check the recipient address and backend SMTP settings."
+        "Email could not be sent. Check that the backend is running and the email settings are correct."
       );
     } finally {
       setIsSendingEmail(false);
@@ -151,14 +180,9 @@ export default function AppraisalForm() {
       ? ((Number(form.revisedCtc) - Number(form.currentCtc)) / Number(form.currentCtc)) * 100
       : 0;
 
-  const editDetails = () => {
-    formTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    formTop.current?.querySelector("input")?.focus({ preventScroll: true });
-  };
-
   return (
     <main className="appraisal-container">
-      <form className="form-card" ref={formTop} onSubmit={handleSubmit}>
+      <form className="form-card" onSubmit={handleSubmit}>
         <EmployeeDetails form={form} updateField={updateField} />
 
         {error && (
@@ -175,24 +199,34 @@ export default function AppraisalForm() {
       </form>
 
       <div className="secondary-buttons">
-        <PdfDownloadButton appraisalId={savedAppraisalId} disabled={!isGenerated} />
-        <button type="button" className="btn-green" onClick={editDetails}>
-          ✎ Edit Details
+        <button type="button" disabled={!isGenerated || isPreparingPdf} onClick={handleDownload}>
+          {isPreparingPdf ? "Preparing PDF..." : "Download as PDF"}
         </button>
         <button
           type="button"
-          onClick={handleSendEmail}
-          disabled={!isGenerated || !savedAppraisalId || isSendingEmail}
+          className={isEditing ? "btn-red" : "btn-green"}
+          disabled={!isGenerated}
+          onClick={() => setIsEditing((value) => !value)}
         >
+          {isEditing ? "✓ Done Editing" : "✎ Edit Letter"}
+        </button>
+        <button type="button" disabled={!isGenerated || isSendingEmail} onClick={handleSendEmail}>
           {isSendingEmail ? "Sending..." : "✉ Email Appraisal Letter"}
         </button>
       </div>
+      {isEditing && (
+        <p className="edit-hint">
+          Editing is on. Click anywhere in the letter and type, then click "Done Editing".
+        </p>
+      )}
       {emailMessage && <p className="email-success" role="status">{emailMessage}</p>}
       {emailError && <p className="form-error center-error" role="alert">{emailError}</p>}
 
       {isGenerated ? (
         <div ref={letterRef}>
           <AppraisalLetterPreview
+            key={letterVersion}
+            editable={isEditing}
             form={form}
             incrementPercentage={incrementPercentage}
             salarySettings={form}

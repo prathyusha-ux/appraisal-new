@@ -22,6 +22,18 @@ const appraisalService = {
     return response.data;
   },
     // Search saved appraisals by employee name
+      sendLetterEmail: async ({ to, employeeName, appraisalId, blob, fileName }) => {
+    const data = new FormData();
+    data.append("to", to);
+    data.append("employeeName", employeeName);
+    if (appraisalId) data.append("appraisalId", String(appraisalId));
+    data.append("file", blob, fileName);
+    const response = await api.post("/api/appraisals/send-email", data, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 60000,
+    });
+    return response.data;
+  },
   searchAppraisals: async (name) => {
     const response = await api.get("/api/appraisals/search", { params: { name } });
     return response.data.results || [];

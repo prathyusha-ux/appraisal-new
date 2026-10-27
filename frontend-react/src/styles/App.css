@@ -119,3 +119,7 @@ button:disabled { background: #c7c9f5; color: #ffffff; cursor: not-allowed; bord
   .form-grid { grid-template-columns: 1fr; }
   .form-card, .saved-appraisals { padding: 22px 18px; }
 }
+.btn-red { background: #c62828; color: #ffffff; border: none; }
+.btn-red:hover { background: #a02020; }
+.edit-hint { text-align: center; color: #3d5fe1; font-weight: 600; font-size: 13px; margin: 6px 0 0; }
+.letter-preview.editing .letter-page { outline: 2px dashed #3d5fe1; outline-offset: 6px; cursor: text; }
