@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import appraisalService, { getAppraisals } from "../services/appraisalService";
+import { useState } from "react";
+import appraisalService from "../services/appraisalService";
 import EmployeeDetails from "./EmployeeDetails";
 import AppraisalLetterPreview from "./AppraisalLetterPreview";
 import { buildLetterPdf } from "../utils/letterPdf";
@@ -29,29 +29,6 @@ export default function AppraisalForm() {
   const [emailError, setEmailError] = useState("");
   const [pdfStatus, setPdfStatus] = useState("");
   const [savedAppraisalId, setSavedAppraisalId] = useState(null);
-  const [appraisals, setAppraisals] = useState([]);
-  const [isLoadingList, setIsLoadingList] = useState(true);
-  const [listError, setListError] = useState("");
-
-  const loadAppraisals = useCallback(async () => {
-    setIsLoadingList(true);
-    setListError("");
-    try {
-      const records = await getAppraisals();
-      setAppraisals(Array.isArray(records) ? records : []);
-    } catch (requestError) {
-      setListError(
-        requestError.response?.data?.message ||
-        "Could not load saved appraisals. Check the backend and database connection."
-      );
-    } finally {
-      setIsLoadingList(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadAppraisals();
-  }, [loadAppraisals]);
 
   const updateField = (name, value) => {
     setForm((previous) => {
@@ -114,7 +91,6 @@ export default function AppraisalForm() {
       const saved = await appraisalService.createAppraisal(payload);
       setSavedAppraisalId(saved.id);
       await storePdf(saved.id);
-      await loadAppraisals();
     } catch (requestError) {
       setError(
         "Letter generated, but it could not be saved to the database. " +
@@ -160,7 +136,6 @@ export default function AppraisalForm() {
     setIsEditing(false);
     if (savedAppraisalId) {
       await storePdf(savedAppraisalId); // save the edited letter
-      await loadAppraisals();
     }
   };
 
@@ -266,52 +241,6 @@ export default function AppraisalForm() {
           No letter generated yet. Fill in the form and click "Generate Appraisal Letter".
         </p>
       )}
-
-      <section className="saved-appraisals" aria-labelledby="saved-appraisals-heading">
-        <div className="saved-appraisals-heading">
-          <div>
-            <h2 id="saved-appraisals-heading">Saved Appraisal Records</h2>
-            <p>Records retrieved from the database.</p>
-          </div>
-          <button type="button" className="refresh-button" onClick={loadAppraisals} disabled={isLoadingList}>
-            {isLoadingList ? "Loading..." : "Refresh"}
-          </button>
-        </div>
-
-        {listError && <p className="form-error" role="alert">{listError}</p>}
-        {isLoadingList ? (
-          <p className="list-message">Loading appraisal records...</p>
-        ) : appraisals.length === 0 ? (
-          <p className="list-message">No appraisal records found. Generate and save an appraisal to see it here.</p>
-        ) : (
-          <div className="table-scroll">
-            <table className="saved-appraisals-table">
-              <thead>
-                <tr>
-                  <th>ID</th><th>Employee</th><th>Designation</th><th>Department</th>
-                  <th>Current CTC (₹)</th><th>Revised CTC (₹)</th><th>Increment</th><th>Effective Date</th><th>PDF</th>
-                </tr>
-              </thead>
-              <tbody>
-                {appraisals.map((record) => {
-                  const current = Number(record.currentCtc || 0);
-                  const revised = Number(record.revisedCtc || 0);
-                  const increment = current > 0 ? ((revised - current) / current) * 100 : 0;
-                  const money = (value) => Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
-                  return (
-                    <tr key={record.id}>
-                      <td>{record.id}</td><td>{record.employeeName}</td><td>{record.designation}</td>
-                      <td>{record.department}</td><td>{money(current)}</td><td>{money(revised)}</td>
-                      <td>{increment.toFixed(2)}%</td><td>{record.effectiveDate || "—"}</td>
-                      <td><button type="button" className="table-download-button" onClick={() => appraisalService.downloadPdf(record.id)}>Download</button></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </main>
   );
 }
