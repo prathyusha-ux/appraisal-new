@@ -1,4 +1,3 @@
-
 import CompanyLogo from "./CompanyLogo";
 import SalaryStructure from "./SalaryStructure";
 import signatureStamp from "../assets/signature.png";
@@ -18,10 +17,10 @@ export default function AppraisalLetterPreview({
     ? new Date(`${form.effectiveDate}T00:00:00`).toLocaleDateString("en-GB")
     : "DD/MM/YYYY";
 
-    const footer = <p className="company-gst">GST-36AAIFU2638L1ZQ</p>;
+  const footer = <p className="company-gst">GST-36AAIFU2638L1ZQ</p>;
 
   return (
-       <section
+    <section
       className={`letter-preview${editable ? " editing" : ""}`}
       id="appraisal-letter"
       aria-label="Appraisal letter preview"
@@ -29,11 +28,7 @@ export default function AppraisalLetterPreview({
       suppressContentEditableWarning
     >
       {/* PAGE 1 */}
-      <article
-        className="letter-page letter-page-one"
-        contentEditable={isEditing}
-        suppressContentEditableWarning
-      >
+      <article className="letter-page letter-page-one">
         <div className="letter-brand-row">
           <CompanyLogo />
         </div>
@@ -86,15 +81,11 @@ export default function AppraisalLetterPreview({
           professionalTax={salarySettings.professionalTax}
         />
 
-        <Footer />
+        {footer}
       </article>
 
       {/* PAGE 2 */}
-      <article
-        className="letter-page letter-page-two"
-        contentEditable={isEditing}
-        suppressContentEditableWarning
-      >
+      <article className="letter-page letter-page-two">
         <p>
           The revised salary will be applicable from the effective date
           mentioned above. The updated salary structure, including applicable
@@ -134,7 +125,7 @@ export default function AppraisalLetterPreview({
           />
         </div>
 
-        <Footer />
+        {footer}
       </article>
     </section>
   );
