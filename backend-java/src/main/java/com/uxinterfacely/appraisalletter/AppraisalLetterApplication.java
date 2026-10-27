@@ -15,4 +15,14 @@ public class AppraisalLetterApplication {
     public static void main(String[] args) {
         SpringApplication.run(AppraisalLetterApplication.class, args);
     }
+        /** Emails a PDF built in the browser; marks the saved record as sent if an id is given. */
+    public void sendUploadedPdf(Long appraisalId, String to, String employeeName, byte[] pdf) {
+        emailService.sendPdf(to, employeeName, pdf);
+        if (appraisalId != null) {
+            repository.findById(appraisalId).ifPresent(a -> {
+                a.setStatus("sent");
+                repository.save(a);
+            });
+        }
+    }
 }

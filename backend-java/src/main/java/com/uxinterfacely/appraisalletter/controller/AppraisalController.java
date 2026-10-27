@@ -14,6 +14,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 
 /**
  *   POST /api/appraisals            save an appraisal
@@ -108,5 +110,21 @@ public class AppraisalController {
         Appraisal a = service.sendEmail(id, pdfFile.getBytes());
         return Map.of("status", a.getStatus(),
                 "message", "Appraisal PDF sent to " + a.getEmployeeEmail() + ".");
+    }
+
+    @PostMapping(value = "/send-email", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, String> sendEmailWithPdf(
+            @RequestParam("to") String to,
+            @RequestParam("employeeName") String employeeName,
+            @RequestParam(value = "appraisalId", required = false) Long appraisalId,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        if (!to.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+            throw new IllegalArgumentException("Enter a valid recipient email address.");
+        }
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("The PDF file is empty.");
+        }
+        service.sendUploadedPdf(appraisalId, to.trim(), employeeName, file.getBytes());
+        return Map.of("status", "sent", "message", "Appraisal PDF sent to " + to.trim() + ".");
     }
 }
