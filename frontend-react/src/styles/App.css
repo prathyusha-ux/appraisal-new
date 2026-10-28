@@ -1,3 +1,7 @@
+/* ===== Page shell, header, form, buttons =====
+   Look and feel matches the Offer Letter Generator. The letter itself is
+   styled separately in AppraisalLetter.css. */
+
 * { box-sizing: border-box; }
 
 :root {
@@ -8,108 +12,292 @@
 body {
   background-color: #f5f5f5;
   font-family: Calibri, Carlito, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-  max-width: 1320px;
+  max-width: 1100px;
   margin: 30px auto;
   padding: 0 24px;
   color: #111111;
 }
 
 /* ---------- Header: logo + search ---------- */
-.page-header { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 24px; }
-.page-header-top-row { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 8px; }
-.page-header-logo { width: 72px; height: auto; object-fit: contain; flex-shrink: 0; }
-.history-search-block { display: flex; flex-direction: column; align-items: flex-start; margin-right: 8%; }
-.history-search-label { font-size: 13px; font-weight: 600; color: #6b7280; margin: 0 0 6px; white-space: nowrap; }
-.history-search-row { display: flex; gap: 14px; width: 650px; max-width: 100%; }
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+.page-header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 8px;
+}
+.page-header-logo {
+  width: 58px;
+  height: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.history-search-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-right: 8%;
+}
+.history-search-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0 0 6px;
+  white-space: nowrap;
+}
+.history-search-row {
+  display: flex;
+  gap: 10px;
+  width: 520px;
+  max-width: 100%;
+}
 .history-search-row input {
   flex: 1;
   border-radius: 50px;
-  padding: 11px 16px 11px 50px;
-  font-size: 15px;
+  padding: 7px 14px 7px 44px;
+  font-size: 13px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: 18px center;
+  background-position: 16px center;
 }
-.history-search-row button { padding: 8px 24px; font-size: 13px; border-radius: 50px; white-space: nowrap; }
-.search-results { width: 650px; max-width: 100%; margin-top: 8px; }
+.history-search-row button {
+  padding: 7px 18px;
+  font-size: 12px;
+  border-radius: 50px;
+  white-space: nowrap;
+}
+.search-results {
+  width: 520px;
+  max-width: 100%;
+  margin-top: 8px;
+}
 .search-results:empty { display: none; }
-.search-empty { color: #666; font-style: italic; font-size: 14px; margin: 8px 0 0; }
+.search-empty {
+  color: #666;
+  font-style: italic;
+  font-size: 14px;
+  margin: 8px 0 0;
+}
 .search-result-row {
-  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
-  gap: 6px 16px; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
 }
 .search-result-row:last-child { border-bottom: none; }
-.search-result-row button { background: none; border: none; color: var(--accent); font-size: 13px; padding: 0; }
+.search-result-row button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  padding: 0;
+}
 .search-result-row button:hover { background: none; text-decoration: underline; }
 
 .gradient-title {
-  font-size: 28px; font-weight: 800; margin: 18px 0 6px;
+  font-size: 28px;
+  font-weight: 800;
+  margin: 18px 0 6px;
   background: linear-gradient(90deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%);
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent; color: #8b5cf6; display: inline-block;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #8b5cf6;
+  display: inline-block;
 }
-.page-subtitle { font-size: 15px; color: #6b7280; margin: 0; }
+.page-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
 
 /* ---------- Form card ---------- */
+
 .form-card {
-  background: #ffffff; border-radius: 14px;
+  background: #ffffff;
+  border-radius: 14px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  border: 1px solid #eceef1; padding: 34px 34px 28px; margin-bottom: 24px;
+  border: 1px solid #eceef1;
+  padding: 28px 28px 24px;
+  margin-bottom: 28px;
 }
-.form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px 30px; margin-bottom: 30px; }
-.field-group { display: flex; flex-direction: column; }
-label { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; }
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 30px 24px;
+  margin-bottom: 28px;
+}
+.field-group {
+  display: flex;
+  flex-direction: column;
+}
+label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
 input, select, textarea {
-  width: 100%; padding: 13px 16px; font-size: 15px; background-color: #ffffff; color: #111111;
-  border: 1px solid #d1d5db; border-radius: 8px; font-family: inherit;
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 15px;
+  background-color: #ffffff;
+  color: #111111;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
 }
 input:focus, select:focus, textarea:focus {
-  outline: none; border-color: #8b5cf6; box-shadow: 0 0 0 2px rgba(139,92,246,0.15);
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 2px rgba(139,92,246,0.15);
 }
-input[readonly] { background-color: #f0f0f0; color: #666666; }
+input[readonly] {
+  background-color: #f0f0f0;
+  color: #666666;
+}
 
 /* ---------- Buttons ---------- */
+
 button {
-  padding: 8px 14px; background: #ffffff; color: #111111; border: 1px solid #d1d5db;
-  border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+  padding: 6px 10px;
+  background: #ffffff;
+  color: #111111;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
 }
 button:hover { background: #f0f0f0; }
-.btn-primary { background: var(--accent); color: #ffffff; border: none; border-radius: 8px; }
-.btn-primary:hover { background: var(--accent-dark); }
-.btn-wide { width: 210px; max-width: 100%; padding: 11px 14px; font-size: 13px; font-weight: 700; }
-.btn-green { background: #2e7d32; color: #ffffff; border: none; }
-.btn-green:hover { background: #1b5e20; }
-button:disabled { background: #c7c9f5; color: #ffffff; cursor: not-allowed; border: none; }
 
-.button-row { display: flex; justify-content: center; }
-.secondary-buttons { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; margin: 28px 0 8px; }
-.secondary-buttons button { padding: 9px 16px; }
+.btn-primary {
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+}
+.btn-primary:hover { background: var(--accent-dark); }
+
+.btn-wide {
+  width: 160px;
+  max-width: 100%;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+.btn-green {
+  background: #2e7d32;
+  color: #ffffff;
+  border: none;
+}
+.btn-green:hover { background: #1b5e20; }
+
+button:disabled {
+  background: #c7c9f5;
+  color: #ffffff;
+  cursor: not-allowed;
+  border: none;
+}
+
+.button-row {
+  display: flex;
+  justify-content: center;
+}
+.secondary-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 24px 0 8px;
+}
 
 /* ---------- Messages ---------- */
-.form-error { background: #fdeeee; color: #b3261e; border-radius: 8px; padding: 10px 14px; font-size: 14px; margin: 0 0 18px; }
-.email-success { color: #1b6b2a; font-weight: 600; text-align: center; font-size: 14px; }
+
+.form-error {
+  background: #fdeeee;
+  color: #b3261e;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  margin: 0 0 18px;
+}
+.email-success {
+  color: #1b6b2a;
+  font-weight: 600;
+  text-align: center;
+  font-size: 14px;
+}
 .center-error { text-align: center; }
-.letter-empty { color: #555; font-style: italic; margin: 22px 4px; }
+.letter-empty {
+  color: #555;
+  font-style: italic;
+  margin: 22px 4px;
+}
 
 /* ---------- Saved records ---------- */
+
 .saved-appraisals {
-  background: #ffffff; border-radius: 14px; border: 1px solid #eceef1;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 26px 34px; margin-top: 36px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #eceef1;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  padding: 26px 34px;
+  margin-top: 36px;
 }
-.saved-appraisals-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
-.saved-appraisals-heading h2 { margin: 0 0 4px; font-size: 20px; color: #1f4e8c; }
+.saved-appraisals-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.saved-appraisals-heading h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  color: #1f4e8c;
+}
 .saved-appraisals-heading p { margin: 0; color: #6b7280; font-size: 14px; }
 .list-message { color: #6b7280; font-size: 14px; }
 .table-scroll { overflow-x: auto; }
-.saved-appraisals-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.saved-appraisals-table th, .saved-appraisals-table td {
-  padding: 10px 12px; text-align: left; border-bottom: 1px solid #eceef1; white-space: nowrap;
+.saved-appraisals-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.saved-appraisals-table th,
+.saved-appraisals-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eceef1;
+  white-space: nowrap;
 }
 .saved-appraisals-table th { background: #f5f6fa; color: #374151; }
-.table-download-button { background: var(--accent); color: #ffffff; border: none; padding: 6px 12px; }
+.table-download-button {
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+}
 .table-download-button:hover { background: var(--accent-dark); }
 
 /* ---------- Responsive ---------- */
+
 @media (max-width: 1000px) {
   .form-grid { grid-template-columns: repeat(2, 1fr); }
   .page-header-top-row { flex-direction: column; align-items: flex-start; gap: 14px; }
@@ -119,7 +307,9 @@ button:disabled { background: #c7c9f5; color: #ffffff; cursor: not-allowed; bord
   .form-grid { grid-template-columns: 1fr; }
   .form-card, .saved-appraisals { padding: 22px 18px; }
 }
+
+/* ---------- Letter editing ---------- */
 .btn-red { background: #c62828; color: #ffffff; border: none; }
 .btn-red:hover { background: #a02020; }
-.edit-hint { text-align: center; color: #3d5fe1; font-weight: 600; font-size: 13px; margin: 6px 0 0; }
+.edit-hint { text-align: center; color: #0b63e5; font-weight: 600; font-size: 12px; margin: 6px 0 0; }
 .letter-preview.editing .letter-page { outline: 2px dashed #3d5fe1; outline-offset: 6px; cursor: text; }
