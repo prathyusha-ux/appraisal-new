@@ -1,13 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import appraisalService from "../services/appraisalService";
 import EmployeeDetails from "./EmployeeDetails";
 import AppraisalLetterPreview from "./AppraisalLetterPreview";
 import { buildLetterPdf } from "../utils/letterPdf";
-import { useEffect, useState } from "react";
-
-  useEffect(() => {
-    appraisalService.wakeUp().catch(() => {}); // warm up the server in the background
-  }, []);
 
 export default function AppraisalForm() {
   const [form, setForm] = useState({
@@ -34,6 +29,11 @@ export default function AppraisalForm() {
   const [emailError, setEmailError] = useState("");
   const [saveStatus, setSaveStatus] = useState(""); // "", "saving", "saved", "failed"
   const [statusLabel, setStatusLabel] = useState("Generated");
+
+  // Render's free plan sleeps when idle; start waking the backend as soon as the page opens.
+  useEffect(() => {
+    appraisalService.wakeUp().catch(() => {});
+  }, []);
   const [savedAppraisalId, setSavedAppraisalId] = useState(null);
 
   const updateField = (name, value) => {
@@ -52,6 +52,22 @@ export default function AppraisalForm() {
     setIsGenerated(false);
     setIsEditing(false);
     setError("");
+  };
+
+  const pdfFileName = `${(form.employeeName || "Employee").trim().replace(/\s+/g, "_")}_Appraisal_Letter.pdf`;
+
+  const makeLetterPdf = () => {
+    const root = document.getElementById("appraisal-letter");
+    if (!root) throw new Error("Generate the letter first.");
+    return buildLetterPdf(root);
+  };
+
+  // Builds the PDF from the letter on screen and stores it in the database.
+  // Throws if anything fails; the caller shows the status line.
+  const storePdf = async (id) => {
+    await new Promise((resolve) => setTimeout(resolve, 300)); // let the letter finish rendering
+    const pdf = await makeLetterPdf();
+    await appraisalService.uploadPdf(id, pdf.output("blob"), pdfFileName);
   };
 
   const handleSubmit = async (event) => {
