@@ -27,7 +27,8 @@ export default function AppraisalForm() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailMessage, setEmailMessage] = useState("");
   const [emailError, setEmailError] = useState("");
-  const [pdfStatus, setPdfStatus] = useState("");
+  const [saveStatus, setSaveStatus] = useState(""); // "", "saving", "saved", "failed"
+  const [statusLabel, setStatusLabel] = useState("Generated");
   const [savedAppraisalId, setSavedAppraisalId] = useState(null);
 
   const updateField = (name, value) => {
@@ -72,10 +73,11 @@ export default function AppraisalForm() {
     setEmailMessage("");
     setEmailError("");
     setSavedAppraisalId(null);
-    setPdfStatus("");
     setIsEditing(false);
     setLetterVersion((v) => v + 1);
     setIsGenerated(true);
+    setStatusLabel("Generated");
+    setSaveStatus("saving");
 
     setIsSaving(true);
     try {
@@ -91,40 +93,12 @@ export default function AppraisalForm() {
       const saved = await appraisalService.createAppraisal(payload);
       setSavedAppraisalId(saved.id);
       await storePdf(saved.id);
+      setSaveStatus("saved");
     } catch (requestError) {
-      setError(
-        "Letter generated, but it could not be saved to the database. " +
-        (requestError.response?.data?.message ||
-          requestError.response?.data?.error ||
-          "Check that the backend is running and the API key and allowed origin are correct.")
-      );
+      console.error("Saving the appraisal failed:", requestError.response?.data || requestError);
+      setSaveStatus("failed");
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const pdfFileName = `${(form.employeeName || "Employee").trim().replace(/\s+/g, "_")}_Appraisal_Letter.pdf`;
-
-  const makeLetterPdf = () => {
-    const root = document.getElementById("appraisal-letter");
-    if (!root) throw new Error("Generate the letter first.");
-    return buildLetterPdf(root);
-  };
-
-  // Builds the PDF from the letter on screen and stores it in the database.
-  const storePdf = async (id) => {
-    setPdfStatus("Saving PDF to the database...");
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 300)); // let the letter finish rendering
-      const pdf = await makeLetterPdf();
-      await appraisalService.uploadPdf(id, pdf.output("blob"), pdfFileName);
-      setPdfStatus("PDF saved to the database.");
-    } catch (pdfError) {
-      setPdfStatus("");
-      setError(
-        "Letter saved, but its PDF could not be stored. " +
-        (pdfError.response?.data?.message || pdfError.message || "")
-      );
     }
   };
 
@@ -135,7 +109,15 @@ export default function AppraisalForm() {
     }
     setIsEditing(false);
     if (savedAppraisalId) {
-      await storePdf(savedAppraisalId); // save the edited letter
+      setStatusLabel("Edited");
+      setSaveStatus("saving");
+      try {
+        await storePdf(savedAppraisalId); // save the edited letter
+        setSaveStatus("saved");
+      } catch (pdfError) {
+        console.error("Saving the edited letter failed:", pdfError.response?.data || pdfError);
+        setSaveStatus("failed");
+      }
     }
   };
 
@@ -224,7 +206,16 @@ export default function AppraisalForm() {
           Editing is on. Click anywhere in the letter and type, then click "Done Editing".
         </p>
       )}
-      {pdfStatus && <p className="email-success" role="status">{pdfStatus}</p>}
+      {saveStatus && (
+        <p className="save-status" role="status">
+          {statusLabel} ✓ —{" "}
+          {saveStatus === "saving"
+            ? "saving…"
+            : saveStatus === "saved"
+            ? "saved"
+            : "save failed (see console)"}
+        </p>
+      )}
       {emailMessage && <p className="email-success" role="status">{emailMessage}</p>}
       {emailError && <p className="form-error center-error" role="alert">{emailError}</p>}
 
