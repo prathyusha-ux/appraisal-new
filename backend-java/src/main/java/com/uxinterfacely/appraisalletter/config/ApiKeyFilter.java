@@ -10,17 +10,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * Equivalent to the Node app's requireApiKey middleware:
- *   function requireApiKey(req, res, next) {
- *     if (!process.env.SERVER_API_KEY) { ...warn, allow through... }
- *     const key = req.get('x-api-key');
- *     if (key !== process.env.SERVER_API_KEY) return res.status(401)...
- *     next();
- *   }
- *
- * Same behavior: if SERVER_API_KEY isn't set, requests are allowed
- * through with a warning (so local dev doesn't need it configured) —
- * but in production, this should always be set.
+ * Requires the x-api-key header on /api/** routes. If SERVER_API_KEY isn't
+ * set, requests are allowed through with a warning.
  */
 @Component
 public class ApiKeyFilter extends OncePerRequestFilter {
@@ -34,6 +25,12 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
         // Only guard /api/** routes — let Swagger UI, health checks, etc. through unauthenticated.
         if (!request.getRequestURI().startsWith("/api/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Browser preflight requests can't carry the API key; let CORS answer them.
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
