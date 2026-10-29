@@ -12,7 +12,7 @@ export const api = axios.create({
     "Content-Type": "application/json",
     "x-api-key": API_KEY,
   },
-  timeout: 30000,
+  timeout: 90000,
 });
 
 const appraisalService = {
@@ -20,6 +20,10 @@ const appraisalService = {
   createAppraisal: async (data) => {
     const response = await api.post("/api/appraisals", data);
     return response.data;
+  },
+    // Wakes up the backend (Render's free plan sleeps when idle)
+  wakeUp: async () => {
+    await api.get("/api/appraisals/health", { timeout: 120000 });
   },
     // Search saved appraisals by employee name
       sendLetterEmail: async ({ to, employeeName, appraisalId, blob, fileName }) => {

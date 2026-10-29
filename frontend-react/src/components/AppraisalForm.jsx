@@ -3,6 +3,11 @@ import appraisalService from "../services/appraisalService";
 import EmployeeDetails from "./EmployeeDetails";
 import AppraisalLetterPreview from "./AppraisalLetterPreview";
 import { buildLetterPdf } from "../utils/letterPdf";
+import { useEffect, useState } from "react";
+
+  useEffect(() => {
+    appraisalService.wakeUp().catch(() => {}); // warm up the server in the background
+  }, []);
 
 export default function AppraisalForm() {
   const [form, setForm] = useState({
