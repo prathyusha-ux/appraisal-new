@@ -4,18 +4,19 @@ import jakarta.persistence.*;
 
 import java.time.OffsetDateTime;
 
+/** The PDF columns of appraisal_table, kept as a separate entity so lists never load the PDF bytes. */
 @Entity
-@Table(name = "appraisal_pdfs")
+@Table(name = "appraisal_table")
 public class AppraisalPdf {
 
     @Id
-    @Column(name = "appraisal_id")
+    @Column(name = "id")
     private Long appraisalId;
 
-    @Column(name = "pdf_data", nullable = false)
+    @Column(name = "pdf_data")
     private byte[] pdfData;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "pdf_updated_at")
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 
     public AppraisalPdf() {}
