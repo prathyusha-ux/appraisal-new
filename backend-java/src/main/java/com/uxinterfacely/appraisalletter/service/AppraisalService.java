@@ -1,97 +1,107 @@
-import axios from "axios";
+package com.uxinterfacely.appraisalletter.service;
 
-// Backend URL + API key. The key must match the backend's SERVER_API_KEY.
-const BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:9090"
-).replace(/\/+$/, "");
-const API_KEY = import.meta.env.VITE_SERVER_API_KEY || "";
+import com.uxinterfacely.appraisalletter.dto.AppraisalRequest;
+import com.uxinterfacely.appraisalletter.exception.ResourceNotFoundException;
+import com.uxinterfacely.appraisalletter.model.Appraisal;
+import com.uxinterfacely.appraisalletter.model.AppraisalPdf;
+import com.uxinterfacely.appraisalletter.repository.AppraisalPdfRepository;
+import com.uxinterfacely.appraisalletter.repository.AppraisalRepository;
+import org.springframework.stereotype.Service;
 
-export const api = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-    "x-api-key": API_KEY,
-  },
-  timeout: 90000,
-});
+import java.util.List;
 
-const appraisalService = {
-  // Wakes up the backend (Render's free plan sleeps when idle)
-  wakeUp: async () => {
-    await api.get("/api/appraisals/health", { timeout: 120000 });
-  },
+@Service
+public class AppraisalService {
 
-  // Create and save an appraisal
-  createAppraisal: async (data) => {
-    const response = await api.post("/api/appraisals", data);
-    return response.data;
-  },
+    private final AppraisalRepository repository;
+    private final AppraisalPdfRepository pdfRepository;
+    private final PdfGenerationService pdfGenerationService;
+    private final EmailService emailService;
 
-  // Retrieve an appraisal by ID
-  getAppraisal: async (id) => {
-    const response = await api.get(`/api/appraisals/${encodeURIComponent(id)}`);
-    return response.data;
-  },
+    public AppraisalService(AppraisalRepository repository,
+                            AppraisalPdfRepository pdfRepository,
+                            PdfGenerationService pdfGenerationService,
+                            EmailService emailService) {
+        this.repository = repository;
+        this.pdfRepository = pdfRepository;
+        this.pdfGenerationService = pdfGenerationService;
+        this.emailService = emailService;
+    }
 
-  // Search saved appraisals by employee name
-  searchAppraisals: async (name) => {
-    const response = await api.get("/api/appraisals/search", { params: { name } });
-    return response.data.results || [];
-  },
+    public Appraisal save(AppraisalRequest req) {
+        Appraisal a = new Appraisal();
+        a.setEmployeeName(req.employeeName().trim());
+        a.setEmployeeEmail(req.employeeEmail().trim());
+        a.setDesignation(req.designation().trim());
+        a.setDepartment(req.department().trim());
+        a.setCurrentCtc(req.currentCtc());
+        a.setRevisedCtc(req.revisedCtc());
+        a.setEffectiveDate(req.effectiveDate());
+        a.setVariablePay(req.variablePay());
+        a.setEmployeePf(req.employeePf());
+        a.setEmployerPf(req.employerPf());
+        a.setProfessionalTax(req.professionalTax());
+        a.setStatus("saved");
+        return repository.save(a);
+    }
 
-  // Store the letter PDF (built in the browser) in the database
-  uploadPdf: async (id, blob, fileName) => {
-    const data = new FormData();
-    data.append("file", blob, fileName);
-    const response = await api.put(`/api/appraisals/${encodeURIComponent(id)}/pdf`, data, {
-      headers: { "Content-Type": "multipart/form-data" },
-      timeout: 60000,
-    });
-    return response.data;
-  },
+    public Appraisal getById(Long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Appraisal " + id + " not found."));
+    }
 
-  // Email the letter PDF that was built in the browser (includes any edits)
-  sendLetterEmail: async ({ to, employeeName, appraisalId, blob, fileName }) => {
-    const data = new FormData();
-    data.append("to", to);
-    data.append("employeeName", employeeName);
-    if (appraisalId) data.append("appraisalId", String(appraisalId));
-    data.append("file", blob, fileName);
-    const response = await api.post("/api/appraisals/send-email", data, {
-      headers: { "Content-Type": "multipart/form-data" },
-      timeout: 60000,
-    });
-    return response.data;
-  },
+    public List<Appraisal> findAll() {
+        return repository.findAllByOrderByCreatedAtDesc();
+    }
 
-  // Email the saved appraisal PDF to the employee email stored with the record
-  sendAppraisalEmail: async (id) => {
-    const response = await api.post(`/api/appraisals/${encodeURIComponent(id)}/email`);
-    return response.data;
-  },
+    public List<Appraisal> searchByName(String name) {
+        return repository.findByEmployeeNameContainingIgnoreCaseOrderByCreatedAtDesc(name);
+    }
 
-  // Download appraisal PDF
-  downloadPdf: async (id) => {
-    const response = await api.get(`/api/appraisals/${encodeURIComponent(id)}/pdf`, {
-      responseType: "blob",
-    });
+    /**
+     * Returns the PDF stored in the database (the letter as built and edited
+     * in the browser). Records saved before PDFs were stored fall back to a
+     * server-built PDF.
+     */
+    public byte[] generatePdf(Long id) {
+        Appraisal appraisal = getById(id);
+        return pdfRepository.findById(id)
+                .map(AppraisalPdf::getPdfData)
+                .orElseGet(() -> pdfGenerationService.generatePdf(appraisal));
+    }
 
-    const pdfBlob = new Blob([response.data], { type: "application/pdf" });
-    const url = window.URL.createObjectURL(pdfBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `appraisal-${id}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-  },
-};
+    /** Stores (or replaces) the PDF for an appraisal. */
+    public void savePdf(Long id, byte[] pdfBytes) {
+        getById(id); // 404 if the appraisal does not exist
+        pdfRepository.save(new AppraisalPdf(id, pdfBytes));
+    }
 
-// Retrieve all appraisals
-export const getAppraisals = async () => {
-  const response = await api.get("/api/appraisals");
-  return response.data;
-};
+    /** Emails the stored appraisal PDF (or a server-built one for older records) and records whether it was sent. */
+    public Appraisal sendEmail(Long id) {
+        Appraisal appraisal = getById(id);
+        byte[] pdf = generatePdf(id);
+        try {
+            emailService.sendAppraisalLetter(appraisal, pdf);
+            appraisal.setStatus("sent");
+        } catch (RuntimeException e) {
+            appraisal.setStatus("failed");
+            repository.save(appraisal);
+            throw e;
+        }
+        return repository.save(appraisal);
+    }
 
-export default appraisalService;
+    /** Emails a PDF built in the browser; stores it and marks the record as sent if an id is given. */
+    public void sendUploadedPdf(Long appraisalId, String to, String employeeName, byte[] pdf) {
+        if (appraisalId != null) {
+            savePdf(appraisalId, pdf); // keep the sent version as the stored one
+        }
+        emailService.sendPdf(to, employeeName, pdf);
+        if (appraisalId != null) {
+            repository.findById(appraisalId).ifPresent(a -> {
+                a.setStatus("sent");
+                repository.save(a);
+            });
+        }
+    }
+}
