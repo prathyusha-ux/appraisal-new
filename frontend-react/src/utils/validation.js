@@ -122,3 +122,43 @@ export function validateDesignation(value) {
   if (text.length > DESIGNATION_MAX) return DESIGNATION_MESSAGES.max;
   return "";
 }
+
+/* ------------------------------------------------- Typing filters
+   Each blocked...() answers "why can't this character be typed?" with the
+   message to show, or "" when the character is allowed. */
+const isLetter = (ch) => /\p{L}/u.test(ch);
+const isDigit = (ch) => /\d/.test(ch);
+
+/** Removes the characters a field does not allow. Returns the cleaned text and the reason. */
+export function filterTyping(value, blocked) {
+  let reason = "";
+  const kept = [...(value || "")]
+    .filter((ch) => {
+      const why = blocked(ch);
+      if (why) reason = why;
+      return !why;
+    })
+    .join("");
+  return { value: kept, reason };
+}
+
+// Name and Department: letters and spaces only.
+export const blockedNameChar = (ch) =>
+  isLetter(ch) || ch === " " ? "" : isDigit(ch) ? NAME_MESSAGES.numbers : NAME_MESSAGES.special;
+
+export const blockedDepartmentChar = (ch) =>
+  isLetter(ch) || ch === " " ? "" : isDigit(ch) ? DEPARTMENT_MESSAGES.numbers : DEPARTMENT_MESSAGES.special;
+
+// Designation: letters, spaces and hyphens.
+export const blockedDesignationChar = (ch) =>
+  isLetter(ch) || ch === " " || ch === "-"
+    ? ""
+    : isDigit(ch)
+    ? DESIGNATION_MESSAGES.numbers
+    : DESIGNATION_MESSAGES.special;
+
+// Employee ID: letters, numbers and hyphens.
+export const blockedIdChar = (ch) => (/[A-Za-z0-9-]/.test(ch) ? "" : ID_MESSAGES.invalid);
+
+// Email: no spaces of any kind.
+export const blockedEmailChar = (ch) => (/\s/.test(ch) ? EMAIL_MESSAGES.spaces : "");

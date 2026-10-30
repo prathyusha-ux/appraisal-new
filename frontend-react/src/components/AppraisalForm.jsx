@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import appraisalService from "../services/appraisalService";
 import EmployeeDetails from "./EmployeeDetails";
 import AppraisalLetterPreview from "./AppraisalLetterPreview";
@@ -14,6 +14,12 @@ import {
   ID_MESSAGES,
   NAME_MAX,
   NAME_MESSAGES,
+  blockedDepartmentChar,
+  blockedDesignationChar,
+  blockedEmailChar,
+  blockedIdChar,
+  blockedNameChar,
+  filterTyping,
   normalizeEmail,
   normalizeSpaces,
   validateDepartment,
@@ -26,42 +32,42 @@ import {
 // Fields with their own rules.
 //   max          longest value the field accepts (extra characters are dropped)
 //   validate     returns an error message, or "" when the value is valid
-//   liveMessages errors shown straight away while typing
+//   blocked      says why a typed character is refused ("" = allowed); refused characters never enter the field
 //   normalize    cleaned value that is shown and saved (extra spaces removed, etc.)
 const TEXT_RULES = {
   employeeName: {
     max: NAME_MAX,
     maxMessage: NAME_MESSAGES.max,
     validate: validateName,
-    liveMessages: [NAME_MESSAGES.numbers, NAME_MESSAGES.special],
+    blocked: blockedNameChar,
     normalize: normalizeSpaces,
   },
   employeeId: {
     max: ID_MAX,
     maxMessage: ID_MESSAGES.max,
     validate: validateEmployeeId,
-    liveMessages: [ID_MESSAGES.invalid],
+    blocked: blockedIdChar,
     normalize: (value) => (value || "").trim(),
   },
   employeeEmail: {
     max: EMAIL_MAX,
     maxMessage: EMAIL_MESSAGES.max,
     validate: validateEmail,
-    liveMessages: [EMAIL_MESSAGES.spaces],
+    blocked: blockedEmailChar,
     normalize: normalizeEmail,
   },
   designation: {
     max: DESIGNATION_MAX,
     maxMessage: DESIGNATION_MESSAGES.max,
     validate: validateDesignation,
-    liveMessages: [DESIGNATION_MESSAGES.numbers, DESIGNATION_MESSAGES.special],
+    blocked: blockedDesignationChar,
     normalize: normalizeSpaces,
   },
   department: {
     max: DEPARTMENT_MAX,
     maxMessage: DEPARTMENT_MESSAGES.max,
     validate: validateDepartment,
-    liveMessages: [DEPARTMENT_MESSAGES.numbers, DEPARTMENT_MESSAGES.special],
+    blocked: blockedDepartmentChar,
     normalize: normalizeSpaces,
   },
 };
@@ -94,6 +100,7 @@ export default function AppraisalForm() {
   const [statusLabel, setStatusLabel] = useState("Generated");
   const [fieldErrors, setFieldErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const blockTimers = useRef({}); // keeps a "not allowed" message visible for a moment
   const [savedAppraisalId, setSavedAppraisalId] = useState(null);
 
   // Render's free plan sleeps when idle; start waking the backend as soon as the page opens.
@@ -106,17 +113,30 @@ export default function AppraisalForm() {
 
     const rule = TEXT_RULES[name];
     if (rule) {
-      let message = "";
+      // 1. characters the field does not allow never get in (typed or pasted)
+      const filtered = filterTyping(value, rule.blocked);
+      value = filtered.value;
+      let message = filtered.reason;
+
+      // 2. the field does not take more than its maximum length
       if (value.length > rule.max) {
-        value = value.slice(0, rule.max); // the system does not accept more than the maximum
+        value = value.slice(0, rule.max);
         message = rule.maxMessage;
-      } else {
-        const found = rule.validate(value);
-        // Wrong characters are reported straight away; "required" and "too short"
-        // wait until the field is left or the form is submitted.
-        message = found && (rule.liveMessages.includes(found) || touched[name]) ? found : "";
       }
-      setFieldErrors((previous) => ({ ...previous, [name]: message }));
+
+      if (message) {
+        // show why the key was refused, then fade the message after a moment
+        clearTimeout(blockTimers.current[name]);
+        blockTimers.current[name] = setTimeout(() => {
+          blockTimers.current[name] = null;
+          setFieldErrors((previous) => (previous[name] === message ? { ...previous, [name]: "" } : previous));
+        }, 2500);
+        setFieldErrors((previous) => ({ ...previous, [name]: message }));
+      } else if (!blockTimers.current[name]) {
+        // normal case: after the field was visited, keep the error up to date
+        const found = rule.validate(value);
+        setFieldErrors((previous) => ({ ...previous, [name]: found && touched[name] ? found : "" }));
+      }
     }
 
     setForm((previous) => {
