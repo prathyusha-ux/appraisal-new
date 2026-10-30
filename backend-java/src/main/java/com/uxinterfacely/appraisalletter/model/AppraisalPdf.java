@@ -4,7 +4,11 @@ import jakarta.persistence.*;
 
 import java.time.OffsetDateTime;
 
-/** The PDF columns of appraisal_table, kept as a separate entity so lists never load the PDF bytes. */
+/**
+ * The PDF columns of appraisal_table. The file itself lives in the Supabase
+ * Storage bucket; only its path is kept here. It is a separate entity so that
+ * lists and searches never touch these columns.
+ */
 @Entity
 @Table(name = "appraisal_table")
 public class AppraisalPdf {
@@ -13,23 +17,23 @@ public class AppraisalPdf {
     @Column(name = "id")
     private Long appraisalId;
 
-    @Column(name = "pdf_data")
-    private byte[] pdfData;
+    @Column(name = "pdf_path")
+    private String pdfPath;
 
     @Column(name = "pdf_updated_at")
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 
     public AppraisalPdf() {}
 
-    public AppraisalPdf(Long appraisalId, byte[] pdfData) {
+    public AppraisalPdf(Long appraisalId, String pdfPath) {
         this.appraisalId = appraisalId;
-        this.pdfData = pdfData;
+        this.pdfPath = pdfPath;
     }
 
     public Long getAppraisalId() { return appraisalId; }
     public void setAppraisalId(Long appraisalId) { this.appraisalId = appraisalId; }
-    public byte[] getPdfData() { return pdfData; }
-    public void setPdfData(byte[] pdfData) { this.pdfData = pdfData; }
+    public String getPdfPath() { return pdfPath; }
+    public void setPdfPath(String pdfPath) { this.pdfPath = pdfPath; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

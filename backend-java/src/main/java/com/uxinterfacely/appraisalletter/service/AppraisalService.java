@@ -17,15 +17,18 @@ public class AppraisalService {
     private final AppraisalPdfRepository pdfRepository;
     private final PdfGenerationService pdfGenerationService;
     private final EmailService emailService;
+    private final StorageService storageService;
 
     public AppraisalService(AppraisalRepository repository,
                             AppraisalPdfRepository pdfRepository,
                             PdfGenerationService pdfGenerationService,
-                            EmailService emailService) {
+                            EmailService emailService,
+                            StorageService storageService) {
         this.repository = repository;
         this.pdfRepository = pdfRepository;
         this.pdfGenerationService = pdfGenerationService;
         this.emailService = emailService;
+        this.storageService = storageService;
     }
 
     // ---------------------------------------------------------------
@@ -180,21 +183,32 @@ public class AppraisalService {
     }
 
     /**
-     * Returns the PDF stored in the database (the letter as built and edited
-     * in the browser). Records saved before PDFs were stored fall back to a
+     * Returns the letter PDF kept in the storage bucket (as built and edited in
+     * the browser). Records saved before PDFs were stored fall back to a
      * server-built PDF.
      */
     public byte[] generatePdf(Long id) {
         Appraisal appraisal = getById(id);
         return pdfRepository.findById(id)
-                .map(AppraisalPdf::getPdfData)
+                .map(AppraisalPdf::getPdfPath)
+                .filter(path -> path != null && !path.isBlank())
+                .map(storageService::download)
                 .orElseGet(() -> pdfGenerationService.generatePdf(appraisal));
     }
 
-    /** Stores (or replaces) the PDF for an appraisal. */
+    /** Uploads the PDF to the bucket (replacing an older version) and remembers its path. */
     public void savePdf(Long id, byte[] pdfBytes) {
-        getById(id); // 404 if the appraisal does not exist
-        pdfRepository.save(new AppraisalPdf(id, pdfBytes));
+        Appraisal appraisal = getById(id); // 404 if the appraisal does not exist
+        String path = storagePath(appraisal);
+        storageService.upload(path, pdfBytes);
+        pdfRepository.save(new AppraisalPdf(id, path));
+    }
+
+    /** File name inside the bucket, e.g. appraisal-17-Vennela_Ravilla.pdf (same path on every save). */
+    private static String storagePath(Appraisal appraisal) {
+        String name = appraisal.getEmployeeName() == null ? "" : appraisal.getEmployeeName();
+        String safe = name.replaceAll("[^A-Za-z0-9]+", "_").replaceAll("^_+|_+$", "");
+        return "appraisal-" + appraisal.getId() + (safe.isEmpty() ? "" : "-" + safe) + ".pdf";
     }
 
     /** Emails the stored appraisal PDF (or a server-built one for older records) and records whether it was sent. */
