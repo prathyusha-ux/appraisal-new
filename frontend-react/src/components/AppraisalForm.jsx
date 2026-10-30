@@ -3,10 +3,73 @@ import appraisalService from "../services/appraisalService";
 import EmployeeDetails from "./EmployeeDetails";
 import AppraisalLetterPreview from "./AppraisalLetterPreview";
 import { buildLetterPdf } from "../utils/letterPdf";
+import {
+  DEPARTMENT_MAX,
+  DEPARTMENT_MESSAGES,
+  DESIGNATION_MAX,
+  DESIGNATION_MESSAGES,
+  EMAIL_MAX,
+  EMAIL_MESSAGES,
+  ID_MAX,
+  ID_MESSAGES,
+  NAME_MAX,
+  NAME_MESSAGES,
+  normalizeEmail,
+  normalizeSpaces,
+  validateDepartment,
+  validateDesignation,
+  validateEmail,
+  validateEmployeeId,
+  validateName,
+} from "../utils/validation";
+
+// Fields with their own rules.
+//   max          longest value the field accepts (extra characters are dropped)
+//   validate     returns an error message, or "" when the value is valid
+//   liveMessages errors shown straight away while typing
+//   normalize    cleaned value that is shown and saved (extra spaces removed, etc.)
+const TEXT_RULES = {
+  employeeName: {
+    max: NAME_MAX,
+    maxMessage: NAME_MESSAGES.max,
+    validate: validateName,
+    liveMessages: [NAME_MESSAGES.numbers, NAME_MESSAGES.special],
+    normalize: normalizeSpaces,
+  },
+  employeeId: {
+    max: ID_MAX,
+    maxMessage: ID_MESSAGES.max,
+    validate: validateEmployeeId,
+    liveMessages: [ID_MESSAGES.invalid],
+    normalize: (value) => (value || "").trim(),
+  },
+  employeeEmail: {
+    max: EMAIL_MAX,
+    maxMessage: EMAIL_MESSAGES.max,
+    validate: validateEmail,
+    liveMessages: [EMAIL_MESSAGES.spaces],
+    normalize: normalizeEmail,
+  },
+  designation: {
+    max: DESIGNATION_MAX,
+    maxMessage: DESIGNATION_MESSAGES.max,
+    validate: validateDesignation,
+    liveMessages: [DESIGNATION_MESSAGES.numbers, DESIGNATION_MESSAGES.special],
+    normalize: normalizeSpaces,
+  },
+  department: {
+    max: DEPARTMENT_MAX,
+    maxMessage: DEPARTMENT_MESSAGES.max,
+    validate: validateDepartment,
+    liveMessages: [DEPARTMENT_MESSAGES.numbers, DEPARTMENT_MESSAGES.special],
+    normalize: normalizeSpaces,
+  },
+};
 
 export default function AppraisalForm() {
   const [form, setForm] = useState({
     employeeName: "",
+    employeeId: "",
     employeeEmail: "",
     designation: "",
     department: "",
@@ -29,14 +92,33 @@ export default function AppraisalForm() {
   const [emailError, setEmailError] = useState("");
   const [saveStatus, setSaveStatus] = useState(""); // "", "saving", "saved", "failed"
   const [statusLabel, setStatusLabel] = useState("Generated");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [savedAppraisalId, setSavedAppraisalId] = useState(null);
 
   // Render's free plan sleeps when idle; start waking the backend as soon as the page opens.
   useEffect(() => {
     appraisalService.wakeUp().catch(() => {});
   }, []);
-  const [savedAppraisalId, setSavedAppraisalId] = useState(null);
 
-  const updateField = (name, value) => {
+  const updateField = (name, rawValue) => {
+    let value = rawValue;
+
+    const rule = TEXT_RULES[name];
+    if (rule) {
+      let message = "";
+      if (value.length > rule.max) {
+        value = value.slice(0, rule.max); // the system does not accept more than the maximum
+        message = rule.maxMessage;
+      } else {
+        const found = rule.validate(value);
+        // Wrong characters are reported straight away; "required" and "too short"
+        // wait until the field is left or the form is submitted.
+        message = found && (rule.liveMessages.includes(found) || touched[name]) ? found : "";
+      }
+      setFieldErrors((previous) => ({ ...previous, [name]: message }));
+    }
+
     setForm((previous) => {
       const next = { ...previous, [name]: value };
       if (name === "revisedCtc") {
@@ -52,6 +134,19 @@ export default function AppraisalForm() {
     setIsGenerated(false);
     setIsEditing(false);
     setError("");
+  };
+
+  const handleBlurField = (name) => {
+    const rule = TEXT_RULES[name];
+    if (!rule) return;
+    setTouched((previous) => ({ ...previous, [name]: true }));
+    setFieldErrors((previous) => ({ ...previous, [name]: rule.validate(form[name]) }));
+    // Show the cleaned value, e.g. "  Vennela    Ravilla " becomes "Vennela Ravilla".
+    // (A value with only spaces is left as typed so that "Name is required" stays visible.)
+    setForm((previous) => ({
+      ...previous,
+      [name]: previous[name].trim() === "" ? previous[name] : rule.normalize(previous[name]),
+    }));
   };
 
   const pdfFileName = `${(form.employeeName || "Employee").trim().replace(/\s+/g, "_")}_Appraisal_Letter.pdf`;
@@ -73,13 +168,27 @@ export default function AppraisalForm() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    const errors = {};
+    Object.entries(TEXT_RULES).forEach(([field, rule]) => {
+      const message = rule.validate(form[field]);
+      if (message) errors[field] = message;
+    });
+    if (Object.keys(errors).length > 0) {
+      setTouched((previous) => ({ ...previous, ...Object.fromEntries(Object.keys(errors).map((f) => [f, true])) }));
+      setFieldErrors((previous) => ({ ...previous, ...errors }));
+      document.getElementById(Object.keys(errors)[0])?.focus();
+      return;
+    }
+
+    // All text fields are valid: use the cleaned values from here on.
+    const cleaned = Object.fromEntries(
+      Object.entries(TEXT_RULES).map(([field, rule]) => [field, rule.normalize(form[field])])
+    );
+    setForm((previous) => ({ ...previous, ...cleaned }));
+
     const current = Number(form.currentCtc);
     const revised = Number(form.revisedCtc);
 
-    if (!form.employeeEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.employeeEmail)) {
-      setError("Enter a valid employee email address.");
-      return;
-    }
     if (!Number.isFinite(current) || current <= 0) {
       setError("Current Annual CTC must be greater than ₹0.");
       return;
@@ -104,6 +213,7 @@ export default function AppraisalForm() {
     try {
       const payload = {
         ...form,
+        ...cleaned,
         currentCtc: current,
         revisedCtc: revised,
         variablePay: Number(form.variablePay),
@@ -191,7 +301,12 @@ export default function AppraisalForm() {
   return (
     <main className="appraisal-container">
       <form className="form-card" onSubmit={handleSubmit}>
-        <EmployeeDetails form={form} updateField={updateField} />
+        <EmployeeDetails
+          form={form}
+          updateField={updateField}
+          errors={fieldErrors}
+          onBlurField={handleBlurField}
+        />
 
         {error && (
           <p className="form-error" role="alert">
