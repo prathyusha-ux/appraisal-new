@@ -172,8 +172,8 @@
   display: block;
   width: auto;
   height: auto;
-  max-width: 220px;                    /* stamp max width */
-  max-height: 90px;                    /* stamp max height */
+  max-width: 280px;                    /* stamp max width — raise both to enlarge further */
+  max-height: 160px;                   /* stamp max height */
   object-fit: contain;
   object-position: left center;
   margin: 8px 0 0;
