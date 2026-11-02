@@ -105,18 +105,30 @@ public class AppraisalService {
         return email.toLowerCase(java.util.Locale.ROOT);
     }
 
-    /** Letters and single spaces, 2 to 50 characters. */
+    private static final String WORDS_WITH_SEPARATORS = "^\\p{L}+(?:(?: ?[&/.,-] ?| )\\p{L}+)*$";
+    private static final String ONLY_WORD_CHARACTERS = "^[\\p{L} &/.,-]+$";
+    private static final String PLACEMENT_MESSAGE = "& - / . , are allowed only between words";
+
+    /** Numbers, other symbols and misplaced separators (& - / . ,) are refused. */
+    private static void checkWords(String text) {
+        if (text.chars().anyMatch(Character::isDigit)) {
+            fail("Numbers are not allowed");
+        }
+        if (!text.matches(ONLY_WORD_CHARACTERS)) {
+            fail("Special characters not allowed");
+        }
+        if (!text.matches(WORDS_WITH_SEPARATORS)) {
+            fail(PLACEMENT_MESSAGE);
+        }
+    }
+
+    /** Letters and single spaces, with & - / . , allowed between words. 2 to 50 characters. */
     private static String cleanDepartment(String raw) {
         String text = normalizeSpaces(raw);
         if (text.isEmpty()) {
             fail("Department is mandatory");
         }
-        if (text.chars().anyMatch(Character::isDigit)) {
-            fail("Numbers are not allowed");
-        }
-        if (!text.matches("^\\p{L}+( \\p{L}+)*$")) {
-            fail("Special characters not allowed");
-        }
+        checkWords(text);
         if (text.length() < 2) {
             fail("Department must be at least 2 characters");
         }
@@ -126,19 +138,14 @@ public class AppraisalService {
         return text;
     }
 
-    /** Letters separated by single spaces or hyphens, 2 to 60 characters, not one repeated letter. */
+    /** Like the department, 2 to 60 characters, and not one repeated letter. */
     private static String cleanDesignation(String raw) {
         String text = normalizeSpaces(raw);
         if (text.isEmpty()) {
             fail("Designation is mandatory");
         }
-        if (text.chars().anyMatch(Character::isDigit)) {
-            fail("Numbers are not allowed");
-        }
-        if (!text.matches("^\\p{L}+([ -]\\p{L}+)*$")) {
-            fail("Special characters not allowed");
-        }
-        String letters = text.replace(" ", "").replace("-", "").toLowerCase(java.util.Locale.ROOT);
+        checkWords(text);
+        String letters = text.replaceAll("[ &/.,-]", "").toLowerCase(java.util.Locale.ROOT);
         if (letters.length() >= 3 && letters.chars().distinct().count() == 1) {
             fail("Enter a valid designation");
         }

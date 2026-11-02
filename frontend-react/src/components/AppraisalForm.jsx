@@ -22,6 +22,7 @@ import {
   filterTyping,
   normalizeEmail,
   normalizeSpaces,
+  tidyWords,
   validateDepartment,
   validateDesignation,
   validateEmail,
@@ -33,6 +34,7 @@ import {
 //   max          longest value the field accepts (extra characters are dropped)
 //   validate     returns an error message, or "" when the value is valid
 //   blocked      says why a typed character is refused ("" = allowed); refused characters never enter the field
+//   tidy         optional extra clean-up after typing (returns the text and a reason)
 //   normalize    cleaned value that is shown and saved (extra spaces removed, etc.)
 const TEXT_RULES = {
   employeeName: {
@@ -61,6 +63,7 @@ const TEXT_RULES = {
     maxMessage: DESIGNATION_MESSAGES.max,
     validate: validateDesignation,
     blocked: blockedDesignationChar,
+    tidy: tidyWords, // a separator (& - / . ,) cannot start the text
     normalize: normalizeSpaces,
   },
   department: {
@@ -68,6 +71,7 @@ const TEXT_RULES = {
     maxMessage: DEPARTMENT_MESSAGES.max,
     validate: validateDepartment,
     blocked: blockedDepartmentChar,
+    tidy: tidyWords,
     normalize: normalizeSpaces,
   },
 };
@@ -126,6 +130,11 @@ export default function AppraisalForm() {
       const filtered = filterTyping(value, rule.blocked);
       value = filtered.value;
       let message = filtered.reason;
+      if (rule.tidy) {
+        const tidied = rule.tidy(value);
+        value = tidied.value;
+        if (tidied.reason) message = tidied.reason;
+      }
 
       // 2. the field does not take more than its maximum length
       if (value.length > rule.max) {

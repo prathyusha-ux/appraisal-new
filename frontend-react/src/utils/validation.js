@@ -75,7 +75,23 @@ export function validateEmail(value) {
   return "";
 }
 
-/* ----------------------------------------------------------- Department */
+/* ----------------------------------------- Department and Designation
+   Letters and spaces, plus  & - / . ,  but only BETWEEN words
+   (for example "IT & Information", "R&D", "Vice-president", "Sr. Manager"). */
+const WORD_SEPARATORS = "&-/.,";
+const WORDS_WITH_SEPARATORS = /^\p{L}+(?:(?: ?[&/.,-] ?| )\p{L}+)*$/u;
+const ONLY_WORD_CHARACTERS = /^[\p{L} &/.,-]+$/u;
+
+const PLACEMENT_MESSAGE = "& - / . , are allowed only between words";
+
+/** Returns the message for numbers, other symbols or misplaced separators, or "". */
+function wordsError(text, messages) {
+  if (/\d/.test(text)) return messages.numbers;
+  if (!ONLY_WORD_CHARACTERS.test(text)) return messages.special;
+  if (!WORDS_WITH_SEPARATORS.test(text)) return messages.placement;
+  return "";
+}
+
 export const DEPARTMENT_MIN = 2;
 export const DEPARTMENT_MAX = 50;
 
@@ -83,6 +99,7 @@ export const DEPARTMENT_MESSAGES = {
   required: "Department is mandatory",
   numbers: "Numbers are not allowed",
   special: "Special characters not allowed",
+  placement: PLACEMENT_MESSAGE,
   min: `Department must be at least ${DEPARTMENT_MIN} characters`,
   max: `Department should not exceed ${DEPARTMENT_MAX} characters`,
 };
@@ -90,14 +107,13 @@ export const DEPARTMENT_MESSAGES = {
 export function validateDepartment(value) {
   const text = normalizeSpaces(value);
   if (!text) return DEPARTMENT_MESSAGES.required;
-  if (/\d/.test(text)) return DEPARTMENT_MESSAGES.numbers;
-  if (!/^\p{L}+(?: \p{L}+)*$/u.test(text)) return DEPARTMENT_MESSAGES.special;
+  const problem = wordsError(text, DEPARTMENT_MESSAGES);
+  if (problem) return problem;
   if (text.length < DEPARTMENT_MIN) return DEPARTMENT_MESSAGES.min;
   if (text.length > DEPARTMENT_MAX) return DEPARTMENT_MESSAGES.max;
   return "";
 }
 
-/* ---------------------------------------------------------- Designation */
 export const DESIGNATION_MIN = 2;
 export const DESIGNATION_MAX = 60;
 
@@ -105,6 +121,7 @@ export const DESIGNATION_MESSAGES = {
   required: "Designation is mandatory",
   numbers: "Numbers are not allowed",
   special: "Special characters not allowed",
+  placement: PLACEMENT_MESSAGE,
   repeated: "Enter a valid designation",
   min: `Designation must be at least ${DESIGNATION_MIN} characters`,
   max: `Designation should not exceed ${DESIGNATION_MAX} characters`,
@@ -113,10 +130,9 @@ export const DESIGNATION_MESSAGES = {
 export function validateDesignation(value) {
   const text = normalizeSpaces(value);
   if (!text) return DESIGNATION_MESSAGES.required;
-  if (/\d/.test(text)) return DESIGNATION_MESSAGES.numbers;
-  // letters separated by single spaces or single hyphens (e.g. Vice-president)
-  if (!/^\p{L}+(?:[ -]\p{L}+)*$/u.test(text)) return DESIGNATION_MESSAGES.special;
-  const letters = text.replace(/[ -]/g, "").toLowerCase();
+  const problem = wordsError(text, DESIGNATION_MESSAGES);
+  if (problem) return problem;
+  const letters = text.replace(/[ &/.,-]/g, "").toLowerCase();
   if (letters.length >= 3 && new Set(letters).size === 1) return DESIGNATION_MESSAGES.repeated; // AAAAAAAA
   if (text.length < DESIGNATION_MIN) return DESIGNATION_MESSAGES.min;
   if (text.length > DESIGNATION_MAX) return DESIGNATION_MESSAGES.max;
@@ -146,16 +162,21 @@ export function filterTyping(value, blocked) {
 export const blockedNameChar = (ch) =>
   isLetter(ch) || ch === " " ? "" : isDigit(ch) ? NAME_MESSAGES.numbers : NAME_MESSAGES.special;
 
-export const blockedDepartmentChar = (ch) =>
-  isLetter(ch) || ch === " " ? "" : isDigit(ch) ? DEPARTMENT_MESSAGES.numbers : DEPARTMENT_MESSAGES.special;
+// Department and Designation: letters, spaces and the separators  & - / . ,
+const isWordChar = (ch) => isLetter(ch) || ch === " " || WORD_SEPARATORS.includes(ch);
 
-// Designation: letters, spaces and hyphens.
+export const blockedDepartmentChar = (ch) =>
+  isWordChar(ch) ? "" : isDigit(ch) ? DEPARTMENT_MESSAGES.numbers : DEPARTMENT_MESSAGES.special;
+
 export const blockedDesignationChar = (ch) =>
-  isLetter(ch) || ch === " " || ch === "-"
-    ? ""
-    : isDigit(ch)
-    ? DESIGNATION_MESSAGES.numbers
-    : DESIGNATION_MESSAGES.special;
+  isWordChar(ch) ? "" : isDigit(ch) ? DESIGNATION_MESSAGES.numbers : DESIGNATION_MESSAGES.special;
+
+/** A separator cannot start the text. Removes leading separators and says why. */
+export function tidyWords(value) {
+  const lead = (value || "").match(/^\s*[&/.,-]+\s*/);
+  if (!lead) return { value, reason: "" };
+  return { value: value.slice(lead[0].length), reason: PLACEMENT_MESSAGE };
+}
 
 // Employee ID: letters, numbers and hyphens.
 export const blockedIdChar = (ch) => (/[A-Za-z0-9-]/.test(ch) ? "" : ID_MESSAGES.invalid);
