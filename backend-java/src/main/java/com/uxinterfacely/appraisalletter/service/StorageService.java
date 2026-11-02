@@ -1,5 +1,8 @@
 package com.uxinterfacely.appraisalletter.service;
 
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +25,8 @@ import java.time.Duration;
 @Service
 public class StorageService {
 
+    private static final Logger log = LoggerFactory.getLogger(StorageService.class);
+
     @Value("${app.supabase.url:}")
     private String supabaseUrl;
 
@@ -35,13 +40,26 @@ public class StorageService {
             .connectTimeout(Duration.ofSeconds(10))
             .build();
 
+    /** Writes one line at startup so Render's Logs show whether the settings arrived (the key itself is never printed). */
+    @PostConstruct
+    void logConfiguration() {
+        log.info("PDF storage: url={} bucket={} serviceKeySet={}",
+                clean(supabaseUrl).isEmpty() ? "(missing)" : clean(supabaseUrl),
+                clean(bucket),
+                !clean(serviceKey).isEmpty());
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value.trim();
+    }
+
     /** Saves the PDF at the given path. An existing file at that path is replaced. */
     public void upload(String path, byte[] bytes) {
         ensureConfigured();
         HttpRequest request = HttpRequest.newBuilder(URI.create(objectUrl(path)))
                 .timeout(Duration.ofSeconds(60))
-                .header("Authorization", "Bearer " + serviceKey)
-                .header("apikey", serviceKey)
+                .header("Authorization", "Bearer " + clean(serviceKey))
+                .header("apikey", clean(serviceKey))
                 .header("Content-Type", "application/pdf")
                 .header("x-upsert", "true") // overwrite when the letter is edited and saved again
                 .POST(HttpRequest.BodyPublishers.ofByteArray(bytes))
@@ -58,8 +76,8 @@ public class StorageService {
         ensureConfigured();
         HttpRequest request = HttpRequest.newBuilder(URI.create(objectUrl(path)))
                 .timeout(Duration.ofSeconds(60))
-                .header("Authorization", "Bearer " + serviceKey)
-                .header("apikey", serviceKey)
+                .header("Authorization", "Bearer " + clean(serviceKey))
+                .header("apikey", clean(serviceKey))
                 .GET()
                 .build();
         HttpResponse<byte[]> response = send(request, HttpResponse.BodyHandlers.ofByteArray());
@@ -71,14 +89,28 @@ public class StorageService {
     }
 
     private String objectUrl(String path) {
-        String base = supabaseUrl.endsWith("/") ? supabaseUrl.substring(0, supabaseUrl.length() - 1) : supabaseUrl;
-        return base + "/storage/v1/object/" + bucket + "/" + path;
+        String base = clean(supabaseUrl);
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        return base + "/storage/v1/object/" + clean(bucket) + "/" + path;
     }
 
     private void ensureConfigured() {
-        if (supabaseUrl == null || supabaseUrl.isBlank() || serviceKey == null || serviceKey.isBlank()) {
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        if (clean(supabaseUrl).isEmpty()) {
+            missing.add("SUPABASE_URL");
+        }
+        if (clean(serviceKey).isEmpty()) {
+            missing.add("SUPABASE_SERVICE_KEY");
+        }
+        if (!missing.isEmpty()) {
             throw new IllegalStateException(
-                    "PDF storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY on the server.");
+                    "PDF storage is not configured. Missing on the server: " + String.join(" and ", missing) + ".");
+        }
+        if (!clean(supabaseUrl).startsWith("http://") && !clean(supabaseUrl).startsWith("https://")) {
+            throw new IllegalStateException(
+                    "SUPABASE_URL must start with https:// (for example https://abcdxyz.supabase.co).");
         }
     }
 
