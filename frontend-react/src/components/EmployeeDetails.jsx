@@ -2,7 +2,7 @@
 // and not the browser's "Please fill out this field" bubble.
 const OWN_RULE_FIELDS = ["employeeName", "employeeId", "employeeEmail", "designation", "department"];
 
-export default function EmployeeDetails({ form, updateField, errors = {}, onBlurField }) {
+export default function EmployeeDetails({ form, updateField, errors = {}, hints = {}, onBlurField }) {
   const fields = [
     ["employeeName", "Employee Name", "text"],
     ["employeeId", "Employee ID", "text"],
@@ -32,6 +32,13 @@ export default function EmployeeDetails({ form, updateField, errors = {}, onBlur
             step={type === "number" ? "0.01" : undefined}
             onChange={(event) => updateField(name, event.target.value)}
             onBlur={() => onBlurField && onBlurField(name)}
+            onKeyDown={(event) => {
+              // Enter in the Employee ID box fetches the details instead of submitting the form.
+              if (name === "employeeId" && event.key === "Enter") {
+                event.preventDefault();
+                if (onBlurField) onBlurField(name);
+              }
+            }}
             readOnly={["employeePf", "employerPf", "professionalTax"].includes(name)}
             required={!OWN_RULE_FIELDS.includes(name)}
             className={errors[name] ? "input-error" : undefined}
@@ -45,6 +52,7 @@ export default function EmployeeDetails({ form, updateField, errors = {}, onBlur
               {errors[name]}
             </p>
           )}
+          {!errors[name] && hints[name] && <p className="field-hint">{hints[name]}</p>}
         </div>
       ))}
     </div>

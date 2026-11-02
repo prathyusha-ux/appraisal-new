@@ -21,6 +21,12 @@ const appraisalService = {
     await api.get("/api/appraisals/health", { timeout: 120000 });
   },
 
+  // Details of an employee from the employee master (404 when the ID is not found)
+  lookupEmployee: async (employeeId) => {
+    const response = await api.get(`/api/employees/${encodeURIComponent(employeeId)}`, { timeout: 120000 });
+    return response.data;
+  },
+
   // Create and save an appraisal
   createAppraisal: async (data) => {
     const response = await api.post("/api/appraisals", data);

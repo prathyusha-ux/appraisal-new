@@ -99,7 +99,10 @@ export default function AppraisalForm() {
   const [saveStatus, setSaveStatus] = useState(""); // "", "saving", "saved", "failed"
   const [statusLabel, setStatusLabel] = useState("Generated");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [lookupHint, setLookupHint] = useState("");
   const [touched, setTouched] = useState({});
+  const lookupTimer = useRef(null); // waits a moment after typing before looking the employee up
+  const lastLookup = useRef("");    // the ID that was looked up last (avoids repeated requests)
   const blockTimers = useRef({}); // keeps a "not allowed" message visible for a moment
   const [savedAppraisalId, setSavedAppraisalId] = useState(null);
 
@@ -110,6 +113,12 @@ export default function AppraisalForm() {
 
   const updateField = (name, rawValue) => {
     let value = rawValue;
+
+    if (name === "employeeId") {
+      setLookupHint("");
+      lastLookup.current = "";
+      clearTimeout(lookupTimer.current);
+    }
 
     const rule = TEXT_RULES[name];
     if (rule) {
@@ -137,6 +146,11 @@ export default function AppraisalForm() {
         const found = rule.validate(value);
         setFieldErrors((previous) => ({ ...previous, [name]: found && touched[name] ? found : "" }));
       }
+
+      // A valid Employee ID: fetch the employee's details once typing pauses.
+      if (name === "employeeId" && !message && !rule.validate(value)) {
+        lookupTimer.current = setTimeout(() => lookupEmployee(value.trim()), 700);
+      }
     }
 
     setForm((previous) => {
@@ -156,6 +170,50 @@ export default function AppraisalForm() {
     setError("");
   };
 
+  // Fills name, email, designation, department and current CTC from the employee master.
+  const fillFromEmployee = (emp) => {
+    const fit = (field, value) => TEXT_RULES[field].normalize(value || "").slice(0, TEXT_RULES[field].max);
+    setForm((previous) => ({
+      ...previous,
+      employeeName: fit("employeeName", emp.fullName) || previous.employeeName,
+      employeeEmail: fit("employeeEmail", emp.email) || previous.employeeEmail,
+      designation: fit("designation", emp.designation) || previous.designation,
+      department: fit("department", emp.department) || previous.department,
+      currentCtc: emp.annualCtc != null ? String(emp.annualCtc) : previous.currentCtc,
+    }));
+    // The values are checked again when you click Generate.
+    setFieldErrors((previous) => ({
+      ...previous,
+      employeeName: "",
+      employeeEmail: "",
+      designation: "",
+      department: "",
+    }));
+    setIsGenerated(false);
+    setIsEditing(false);
+  };
+
+  const lookupEmployee = async (employeeId) => {
+    if (lastLookup.current === employeeId) return; // already looked up (or in progress)
+    lastLookup.current = employeeId;
+    setLookupHint("Looking up employee details…");
+    try {
+      const emp = await appraisalService.lookupEmployee(employeeId);
+      if (lastLookup.current !== employeeId) return; // the ID was changed meanwhile
+      fillFromEmployee(emp);
+      setLookupHint("Details filled in from the employee master. Check them before generating.");
+    } catch (requestError) {
+      if (lastLookup.current !== employeeId) return;
+      if (requestError.response?.status === 404) {
+        setLookupHint("No employee found for this ID. Enter the details by hand.");
+      } else {
+        lastLookup.current = ""; // allow a retry
+        console.error("Employee lookup failed:", requestError.response?.data || requestError);
+        setLookupHint("Could not look up this employee. Enter the details by hand.");
+      }
+    }
+  };
+
   const handleBlurField = (name) => {
     const rule = TEXT_RULES[name];
     if (!rule) return;
@@ -167,6 +225,10 @@ export default function AppraisalForm() {
       ...previous,
       [name]: previous[name].trim() === "" ? previous[name] : rule.normalize(previous[name]),
     }));
+    // A valid Employee ID: fetch the rest of the details.
+    if (name === "employeeId" && !rule.validate(form.employeeId)) {
+      lookupEmployee(form.employeeId.trim());
+    }
   };
 
   const pdfFileName = `${(form.employeeName || "Employee").trim().replace(/\s+/g, "_")}_Appraisal_Letter.pdf`;
@@ -325,6 +387,7 @@ export default function AppraisalForm() {
           form={form}
           updateField={updateField}
           errors={fieldErrors}
+          hints={{ employeeId: lookupHint }}
           onBlurField={handleBlurField}
         />
 
