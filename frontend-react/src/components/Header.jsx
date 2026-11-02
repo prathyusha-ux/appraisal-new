@@ -5,14 +5,14 @@ import logo from "../assets/company-logo.png";
 export default function Header() {
   const [name, setName] = useState("");
   const [searching, setSearching] = useState(false);
-  const [rows, setRows] = useState(null);
+  const [rows, setRows] = useState(null); // null = not searched yet
   const [error, setError] = useState("");
 
   const handleSearch = async () => {
     const query = name.trim();
     if (!query) {
       setRows(null);
-      setError("Enter an employee name to search.");
+      setError("Enter an employee name or ID to search.");
       return;
     }
     setSearching(true);
@@ -21,7 +21,10 @@ export default function Header() {
       setRows(await appraisalService.searchAppraisals(query));
     } catch (requestError) {
       setRows(null);
-      setError(requestError.response?.data?.message || "Search failed. Check the backend connection.");
+      setError(
+        requestError.response?.data?.message ||
+          "Search failed. Check the backend connection."
+      );
     } finally {
       setSearching(false);
     }
@@ -40,12 +43,17 @@ export default function Header() {
             <input
               id="searchName"
               type="text"
-              placeholder="Search by employee name"
+              placeholder="Search by employee name or ID"
               value={name}
               onChange={(event) => setName(event.target.value)}
               onKeyDown={(event) => event.key === "Enter" && handleSearch()}
             />
-            <button type="button" className="btn-primary" disabled={searching} onClick={handleSearch}>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={searching}
+              onClick={handleSearch}
+            >
               {searching ? "Searching..." : "Search"}
             </button>
           </div>
@@ -58,7 +66,8 @@ export default function Header() {
             {rows && rows.map((row) => (
               <div className="search-result-row" key={row.id}>
                 <div>
-                  <strong>{row.employeeName}</strong> — {row.designation} · {row.status}
+                  <strong>{row.employeeName}</strong>
+                  {row.employeeId ? ` (${row.employeeId})` : ""} — {row.designation} · {row.status}
                 </div>
                 <button type="button" onClick={() => appraisalService.downloadPdf(row.id)}>
                   Download PDF

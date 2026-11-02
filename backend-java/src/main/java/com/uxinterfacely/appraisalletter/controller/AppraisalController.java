@@ -19,7 +19,7 @@ import java.util.Map;
 /**
  *   POST /api/appraisals            save an appraisal
  *   GET  /api/appraisals            list saved appraisals (newest first)
- *   GET  /api/appraisals/search     search by employee name
+ *   GET  /api/appraisals/search     search by employee name or employee ID (?name=...)
  *   GET  /api/appraisals/{id}       one appraisal
  *   GET  /api/appraisals/{id}/pdf   download the letter as PDF
  *   PUT  /api/appraisals/{id}/pdf   store the letter PDF (multipart "file") in the database
@@ -54,10 +54,11 @@ public class AppraisalController {
 
     @GetMapping("/search")
     public ResponseEntity<?> search(@RequestParam String name) {
+        // "name" holds whatever was typed: part of an employee name or of an employee ID
         if (name.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "A name query parameter is required."));
+            return ResponseEntity.badRequest().body(Map.of("message", "Enter an employee name or ID to search."));
         }
-        return ResponseEntity.ok(Map.of("success", true, "results", service.searchByName(name)));
+        return ResponseEntity.ok(Map.of("success", true, "results", service.search(name.trim())));
     }
 
     @GetMapping("/{id}")

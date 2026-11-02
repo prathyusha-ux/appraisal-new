@@ -10,4 +10,8 @@ public interface AppraisalRepository extends JpaRepository<Appraisal, Long> {
     List<Appraisal> findAllByOrderByCreatedAtDesc();
 
     List<Appraisal> findByEmployeeNameContainingIgnoreCaseOrderByCreatedAtDesc(String name);
+
+    /** Matches the text against the employee name OR the employee ID (any part, any case), newest first. */
+    List<Appraisal> findByEmployeeNameContainingIgnoreCaseOrEmployeeIdContainingIgnoreCaseOrderByCreatedAtDesc(
+            String name, String employeeId);
 }

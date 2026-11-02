@@ -178,8 +178,10 @@ public class AppraisalService {
         return repository.findAllByOrderByCreatedAtDesc();
     }
 
-    public List<Appraisal> searchByName(String name) {
-        return repository.findByEmployeeNameContainingIgnoreCaseOrderByCreatedAtDesc(name);
+    /** Finds letters whose employee name or employee ID contains the text. */
+    public List<Appraisal> search(String text) {
+        return repository
+                .findByEmployeeNameContainingIgnoreCaseOrEmployeeIdContainingIgnoreCaseOrderByCreatedAtDesc(text, text);
     }
 
     /**
