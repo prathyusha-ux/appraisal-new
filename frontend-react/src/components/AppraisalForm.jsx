@@ -115,6 +115,16 @@ export default function AppraisalForm() {
     appraisalService.wakeUp().catch(() => {});
   }, []);
 
+  // Shows a message under a field for a moment (used when a key or character is refused).
+  const flashError = (name, message) => {
+    clearTimeout(blockTimers.current[name]);
+    blockTimers.current[name] = setTimeout(() => {
+      blockTimers.current[name] = null;
+      setFieldErrors((previous) => (previous[name] === message ? { ...previous, [name]: "" } : previous));
+    }, 2500);
+    setFieldErrors((previous) => ({ ...previous, [name]: message }));
+  };
+
   const updateField = (name, rawValue) => {
     let value = rawValue;
 
@@ -143,13 +153,7 @@ export default function AppraisalForm() {
       }
 
       if (message) {
-        // show why the key was refused, then fade the message after a moment
-        clearTimeout(blockTimers.current[name]);
-        blockTimers.current[name] = setTimeout(() => {
-          blockTimers.current[name] = null;
-          setFieldErrors((previous) => (previous[name] === message ? { ...previous, [name]: "" } : previous));
-        }, 2500);
-        setFieldErrors((previous) => ({ ...previous, [name]: message }));
+        flashError(name, message); // show why the key was refused, then fade the message
       } else if (!blockTimers.current[name]) {
         // normal case: after the field was visited, keep the error up to date
         const found = rule.validate(value);
